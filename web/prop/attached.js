@@ -94,7 +94,32 @@ function enclosedFloor(top, floor, k, topo, rot, offset) {
       }
     }
   }
-  return walled >= BORE.walledMin;
+  if (walled >= BORE.walledMin) return true;
+  // A bore running ALONG the wall defeats the compass count: two rays look
+  // straight down the bore at open air, and with the wall a hair off the axis
+  // the diagonals on one side fall short (bore_bracket's 14 mm bore scored 3-4
+  // of 8 and got a wall from its floor to its ceiling). In the wall's own cross
+  // section, though, a bore is part on BOTH sides within `radius`. Checked at two
+  // heights so a mesh's vertex row at exactly zMid can't hide a side.
+  return sideWalled(top, k, topo, rot, offset, zMid) || sideWalled(top, k, topo, rot, offset, zMid + 0.37);
+}
+
+/** Part within BORE.radius on both sides of the wall at station `k`, at height z. */
+function sideWalled(top, k, topo, rot, offset, z) {
+  const p = top[k];
+  const a = top[Math.max(0, k - 1)];
+  const b = top[Math.min(top.length - 1, k + 1)];
+  const rx = b[0] - a[0], ry = b[1] - a[1];
+  const rn = Math.hypot(rx, ry);
+  if (rn < 1e-9) return false;
+  const sx = ry / rn, sy = -rx / rn;
+  const hits = (dir) => {
+    for (let r = BORE.step; r <= BORE.radius; r += BORE.step) {
+      if (insidePart(topo, rot, offset, p[0] + dir * sx * r, p[1] + dir * sy * r, z)) return true;
+    }
+    return false;
+  };
+  return hits(1) && hits(-1);
 }
 
 /**
