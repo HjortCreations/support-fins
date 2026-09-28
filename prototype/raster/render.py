@@ -25,7 +25,7 @@ def panel(ax, d, label):
 
 a, b = json.load(open(sys.argv[1])), json.load(open(sys.argv[2]))
 fig = plt.figure(figsize=(12, 6), dpi=110)
-panel(fig.add_subplot(121, projection='3d'), a, 'main')
-panel(fig.add_subplot(122, projection='3d'), b, 'spike (race)')
+panel(fig.add_subplot(121, projection='3d'), a, sys.argv[5] if len(sys.argv) > 5 else 'main')
+panel(fig.add_subplot(122, projection='3d'), b, sys.argv[6] if len(sys.argv) > 6 else 'spike (race)')
 fig.suptitle(sys.argv[3] + '   green = held overhang, red = unheld, blue = main-style wall, orange = raster wall', fontsize=10)
 plt.tight_layout(); plt.savefig(sys.argv[4])
