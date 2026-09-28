@@ -1,6 +1,7 @@
 // SPIKE: dump a model's seated part, support walls and overhang held/unheld to
 // JSON for render.py. Run once plain (main) and once with the import map (spike).
-//   deno run -A [--import-map import_map.json] dump.js <stl> <xdeg> <out.json>
+//   deno run -A [--import-map import_map.json] dump.js <stl> <xdeg> <out.json> [off]
+// (engine: 4th arg off = buildProps raster:false)
 const WEB = new URL('../../web/', import.meta.url).pathname;
 const { buildTopology, analyze } = await import(`${WEB}overhangs.js`);
 const { buildFins } = await import(`${WEB}fins.js`);
@@ -13,7 +14,7 @@ const d = Number(xdeg) * Math.PI / 180, c = Math.cos(d), s = Math.sin(d);
 const rot = [1, 0, 0, 0, c, s, 0, -s, c];
 const topo = buildTopology({ getAttribute: (k) => (k === 'position' ? { array: pos } : null) });
 const res = analyze(topo, 45, rot);
-const r = buildFins(topo, res, rot, { mode: 'auto', bedPad: true, tines: true });
+const r = buildFins(topo, res, rot, { mode: 'auto', bedPad: true, tines: true, raster: Deno.args[3] !== 'off' });
 const off = res.offset;
 const seat = (i) => [rot[0] * pos[i] + rot[3] * pos[i + 1] + rot[6] * pos[i + 2] + off.x,
   rot[1] * pos[i] + rot[4] * pos[i + 1] + rot[7] * pos[i + 2] + off.y,
