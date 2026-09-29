@@ -46,6 +46,7 @@ el('fin-mode').addEventListener('change', (e) => {
   histPush();
   finMode = e.target.value;
   el('coverage-fld').hidden = finMode !== 'auto';  // row density only applies to Auto
+  el('curve-fill-fld').hidden = finMode !== 'auto';
   drawAugment = false;      // start each mode with hand-placement off
   if (removeMode) cancelRemove();
   setDrawMsg('');

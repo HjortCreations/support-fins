@@ -325,6 +325,14 @@
       <span>Wide-face coverage <span class="mut">sparse ⟶ dense</span></span>
       <input type="range" id="coverage" min="0" max="100" step="5" value="50">
     </label>
+    <!-- Curved fill (fins/curvefill.js): curved fins under the rings and arcs no
+         straight wall fits, standing on the part below where they must. Auto ticks
+         it for a shell of rings and struts (a lattice net) and says so; untick it to
+         drop them, or tick it on any part. A new model starts back on auto. Auto only. -->
+    <label class="check" id="curve-fill-fld"
+           title="Add curved fins under rings and arcs that straight walls can't reach. Fins may stand on the part below (a small welded foot). Turned on automatically for ring-and-strut shells; untick to drop them.">
+      <input type="checkbox" id="curve-fill">Curved fill <span class="mut" id="curve-fill-note">rings &amp; arcs</span>
+    </label>
     <!-- Suggest + Draw mix: place extra walls by hand where auto-placement missed.
          Shown only in Suggest mode (toggled in ui/settings.js). Per-fin removal (Auto only,
          shown via ui/remove.js syncRemoveUI): arm a click-to-remove mode, hover lights a

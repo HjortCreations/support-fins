@@ -18,6 +18,7 @@ import {
 } from './walls.js';
 import { activeAdded, refreshFins, markFinsStale } from './finbuild.js';
 import { finsVisible, highlightSmall, setDrawAugment, syncAugmentUI } from './settings.js';
+import { resetCurveFill } from './curvefill.js';
 import { gizmo, hoverFace, setGizmo, setLayPlacing } from './pose.js';
 
 const partMaterial = new THREE.MeshStandardMaterial({
@@ -45,6 +46,7 @@ const SHADE = {
  * z=0. Returns the measured size so the caller can report it.
  */
 export function setPart(geometry, filename) {
+  resetCurveFill();                 // a new model starts the curved fill back on auto
   if (part) {
     part.geometry.dispose();
     scene.remove(part);

@@ -17,6 +17,7 @@ import {
   drawnTris, drawnMesh, drawMaterial, drawShown, clearPreview, rebuildDrawn,
 } from './walls.js';
 import { finsVisible, finMode } from './settings.js';
+import { curveFillOpt, showCurveFill } from './curvefill.js';
 import { topology, rotM3, lastResult, updateFit } from './part.js';
 
 export let finMesh = null;
@@ -96,6 +97,7 @@ function finOpts() {
            tineDensity: el('tine-density').valueAsNumber / 100,
            layerHeight: el('layer-height').valueAsNumber,
            coverage: el('coverage').valueAsNumber / 100,
+           curveFill: curveFillOpt(),
            // Auto places sway braces itself; in Draw they are clicked on by hand.
            sway: finMode === 'auto' && el('sway').checked ? { on: true, ...swayOpts() } : undefined,
            // The clearances have to travel WITH the request: the build runs in a
@@ -234,6 +236,7 @@ function applyBuilt(built) {
   finMaterial.opacity = padMaterial.opacity = 1;
 
   lastBuilt = built;
+  showCurveFill(built);
   padTris = built.padTriangles;
   padMesh = meshFrom(padTris, padMaterial);
 
