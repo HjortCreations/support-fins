@@ -1,6 +1,6 @@
 /**
  * A region's footprint in plan: its seated triangles rasterised on a `cell` grid,
- * and each inside cell's distance to the footprint's edge. Shared by lattice.js
+ * each inside cell's distance to the footprint's edge, and its skeleton. Shared by lattice.js
  * (is this region a net of narrow struts, and where are they) and curve.js (the
  * path a curved fin follows through it).
  */
@@ -51,4 +51,30 @@ export function planFootprint(tri, cell, maxCells = 4e6) {
   }
   for (let k = 0; k < W * H; k++) if (fp[k]) dist[k] = (dist[k] / 3) * cell;
   return { x0, y0, W, H, cell, fp, dist, idx, cellOf };
+}
+
+/** The footprint thinned to a one-cell skeleton (Zhang-Suen): 1 on the skeleton. */
+export function skeleton(plan) {
+  const { W, H, fp, idx } = plan;
+  const sk = fp.slice();
+  const nb = (k) => [sk[k - W], sk[k - W + 1], sk[k + 1], sk[k + W + 1], sk[k + W], sk[k + W - 1], sk[k - 1], sk[k - W - 1]];
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const pass of [0, 1]) {
+      const del = [];
+      for (let j = 1; j < H - 1; j++) for (let i = 1; i < W - 1; i++) {
+        const k = idx(i, j); if (!sk[k]) continue;
+        const p = nb(k);                              // p2..p9, clockwise from north
+        const B = p.reduce((s, q) => s + q, 0);
+        if (B < 2 || B > 6) continue;
+        let A = 0; for (let q = 0; q < 8; q++) if (!p[q] && p[(q + 1) % 8]) A++;
+        if (A !== 1) continue;
+        if (pass === 0 ? (p[0] * p[2] * p[4] || p[2] * p[4] * p[6]) : (p[0] * p[2] * p[6] || p[0] * p[4] * p[6])) continue;
+        del.push(k);
+      }
+      for (const k of del) sk[k] = 0;
+      if (del.length) changed = true;
+    }
+  }
+  return sk;
 }
