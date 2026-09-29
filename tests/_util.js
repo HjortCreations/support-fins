@@ -175,3 +175,22 @@ export function bbox(tris) {
   for (const v of tris) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], v[k]); hi[k] = Math.max(hi[k], v[k]); }
   return { lo, hi };
 }
+
+/** A closed surface round the filled voxels of an nx*ny*nz grid, V mm each: one shared surface, so touching voxels' undersides are one region. */
+export function voxelTopo(filled, nx, ny, nz, V = 2) {
+  const at = (i, j, k) => i >= 0 && j >= 0 && k >= 0 && i < nx && j < ny && k < nz && filled(i, j, k);
+  const P = (i, j, k) => [i * V, j * V, k * V], t = [];
+  const q = (a, b, c, d) => t.push(a, b, c, a, c, d);
+  for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) for (let k = 0; k < nz; k++) {
+    if (!at(i, j, k)) continue;
+    if (!at(i, j, k - 1)) q(P(i, j, k), P(i, j + 1, k), P(i + 1, j + 1, k), P(i + 1, j, k));
+    if (!at(i, j, k + 1)) q(P(i, j, k + 1), P(i + 1, j, k + 1), P(i + 1, j + 1, k + 1), P(i, j + 1, k + 1));
+    if (!at(i - 1, j, k)) q(P(i, j, k), P(i, j, k + 1), P(i, j + 1, k + 1), P(i, j + 1, k));
+    if (!at(i + 1, j, k)) q(P(i + 1, j, k), P(i + 1, j + 1, k), P(i + 1, j + 1, k + 1), P(i + 1, j, k + 1));
+    if (!at(i, j - 1, k)) q(P(i, j, k), P(i + 1, j, k), P(i + 1, j, k + 1), P(i, j, k + 1));
+    if (!at(i, j + 1, k)) q(P(i, j + 1, k), P(i, j + 1, k + 1), P(i + 1, j + 1, k + 1), P(i + 1, j + 1, k));
+  }
+  const pos = new Float32Array(t.length * 3);
+  t.forEach((p, n) => pos.set(p, n * 3));
+  return buildTopology({ getAttribute: (k) => (k === 'position' ? { array: pos } : null) });
+}

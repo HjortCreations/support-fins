@@ -26,6 +26,7 @@
  *   pad.js        PAD and the bed pad (conforming oval, or the brim-style one)
  *   wedges.js     angled wedges where no wall reaches; gripPatches for Draw
  *   shortwalls.js the last resort: short, stocky walls where nothing else reached
+ *   curvefill.js  curved fins under the overhang still bare (rings, arcs): a mode
  *
  * Each module imports only modules above it in this list and never fins.js.
  */
@@ -38,6 +39,7 @@ import { FIN } from './fins/config.js';
 import { buildPad, PAD } from './fins/pad.js';
 import { bedContact, seatedPartTris, seatingOf } from './fins/seating.js';
 import { lastResortWalls } from './fins/shortwalls.js';
+import { curveFill, wantsCurveFill } from './fins/curvefill.js';
 import { buildPerpFins, PERP, propServesPatch, unservedAfterWedges, wedgeVeto } from './fins/wedges.js';
 
 // Moved into web/fins/ (one module per concern); re-exported here so every
@@ -220,6 +222,16 @@ function buildFinsCore(topo, result, rot, opts = {}) {
     const short = noShort ? { triangles: [], props: [], served: [], tines: 0 } : lastResortWalls(topo, result, rot, { ...opts, tines: withTines, coverage },
                                   base.servedRegions ?? [], wedgeTris, [...base.triangles, ...wedgeTris]);
 
+    // CURVED FILL: curved fins under the overhang still bare after everything
+    // above (a ring, an arc round a dome). A mode: opts.curveFill true/false, or
+    // unset = auto, on for a lattice net. See fins/curvefill.js.
+    const curveOn = opts.curveFill ?? (noShort ? false : wantsCurveFill(topo, result, rot));
+    const curve = curveOn && !noShort
+      ? curveFill(topo, result, rot, { ...opts, tines: withTines },
+                  [...base.props, ...short.props, ...wedgeRecs].flatMap((q) => q.line ?? []),
+                  [...base.triangles, ...wedgeTris, ...short.triangles])
+      : { triangles: [], props: [], tines: 0 };
+
     // Unified per-fin array: each entry carries its triangle segment(s) into the
     // final `built.triangles`, so the UI can address and remove an individual fin
     // by its geometry. Prop ranges already index `base.triangles` (the prefix of
@@ -254,20 +266,34 @@ function buildFinsCore(topo, result, rot, opts = {}) {
         line: q.line, span: q.span,
       });
     }
-    const servedRegions = [...(base.servedRegions ?? []), ...short.served];
+    const curveAt = shortAt + short.triangles.length;
+    const curveProps = curve.props.map((q) => ({ ...q, triRanges: q.triRanges.map(([a, b]) => [a + curveAt, b + curveAt]) }));
+    for (const q of curveProps) {
+      fins.push({
+        height: q.height, length: q.span, tines: q.tines ?? 0, rows: 0, stilt: 0, lean: 0, bearing: 0, site: null,
+        id: wid++, kind: 'prop', curved: true,
+        triRanges: q.triRanges,
+        line: q.line, span: q.span,
+      });
+    }
+    const servedBefore = [...(base.servedRegions ?? []), ...short.served];
+    const curveServed = [...new Set(curve.props.map((q) => q.region))].filter((r) => !servedBefore.includes(r));
+    const servedRegions = [...servedBefore, ...curveServed];
     return {
       ...base, mode,
-      triangles: [...base.triangles, ...wedgeTris, ...short.triangles],
-      props: [...base.props, ...shortProps],
+      triangles: [...base.triangles, ...wedgeTris, ...short.triangles, ...curve.triangles],
+      props: [...base.props, ...shortProps, ...curveProps],
+      // the curved fill's state, for the UI's checkbox: on, and whether auto chose it
+      curveFill: { on: curveOn, auto: opts.curveFill === undefined, fins: curveProps.length, skipped: curve.skipped },
       servedRegions,
       fins,
-      tines: (base.tines ?? 0) + wedgeTines + short.tines,
+      tines: (base.tines ?? 0) + wedgeTines + short.tines + curve.tines,
       // A tined rib/wedge IS the combined support (a "brace"); a tineless one is a
       // plain prop. Report the split so the stress harness / UI metrics keep working.
       braceCount: withTines ? fins.length : wedgeCount,
-      propCount: withTines ? 0 : base.fins.length + short.props.length,
+      propCount: withTines ? 0 : base.fins.length + short.props.length + curveProps.length,
       unserved: wedgedPatches ? unservedAfterWedges(topo, rot, result, servedRegions, wedgeTris)
-                              : (base.unserved ?? 0) - short.served.length,
+                              : (base.unserved ?? 0) - short.served.length - curveServed.length,
     };
   }
 

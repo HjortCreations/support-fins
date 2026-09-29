@@ -5,27 +5,9 @@
 // each as a lone strut would, along its own length; the raster race keeps it only
 // where it holds more. Pinned on a voxel strut net (one shared surface, so the
 // struts' undersides really are one region, as on the headset).
-import { buildTopology, analyze, fins, prop, assert, block } from './_util.js';
+import { buildTopology, analyze, fins, prop, assert, block, voxelTopo } from './_util.js';
 import { latticeStruts } from '../web/prop/lattice.js';
 
-const V = 2;                                   // mm per voxel
-function voxelTopo(filled, nx, ny, nz) {
-  const at = (i, j, k) => i >= 0 && j >= 0 && k >= 0 && i < nx && j < ny && k < nz && filled(i, j, k);
-  const P = (i, j, k) => [i * V, j * V, k * V], t = [];
-  const q = (a, b, c, d) => t.push(a, b, c, a, c, d);
-  for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) for (let k = 0; k < nz; k++) {
-    if (!at(i, j, k)) continue;
-    if (!at(i, j, k - 1)) q(P(i, j, k), P(i, j + 1, k), P(i + 1, j + 1, k), P(i + 1, j, k));
-    if (!at(i, j, k + 1)) q(P(i, j, k + 1), P(i + 1, j, k + 1), P(i + 1, j + 1, k + 1), P(i, j + 1, k + 1));
-    if (!at(i - 1, j, k)) q(P(i, j, k), P(i, j, k + 1), P(i, j + 1, k + 1), P(i, j + 1, k));
-    if (!at(i + 1, j, k)) q(P(i + 1, j, k), P(i + 1, j + 1, k), P(i + 1, j + 1, k + 1), P(i + 1, j, k + 1));
-    if (!at(i, j - 1, k)) q(P(i, j, k), P(i + 1, j, k), P(i + 1, j, k + 1), P(i, j, k + 1));
-    if (!at(i, j + 1, k)) q(P(i, j + 1, k), P(i, j + 1, k + 1), P(i + 1, j + 1, k + 1), P(i + 1, j + 1, k));
-  }
-  const pos = new Float32Array(t.length * 3);
-  t.forEach((p, n) => pos.set(p, n * 3));
-  return buildTopology({ getAttribute: (k) => (k === 'position' ? { array: pos } : null) });
-}
 const topoOf = (pos) => buildTopology({ getAttribute: (k) => (k === 'position' ? { array: pos } : null) });
 
 // A 64 mm square net of 4 mm struts at a 20 mm pitch, 24 mm up on four corner posts.
@@ -58,7 +40,7 @@ Deno.test('lattice: a strut net is cut into struts; a plate and a lone bar are n
 // 4 mm width -- the headset's struts running around the dome.
 Deno.test('lattice: a tilted net gets a wall along each strut (the normal pass gave none)', () => {
   const topo = net(), rot = rotX(20), res = analyze(topo, 45, rot);
-  const build = (raster) => fins.buildFins(topo, res, rot, { mode: 'auto', bedPad: true, raster });
+  const build = (raster) => fins.buildFins(topo, res, rot, { mode: 'auto', bedPad: true, raster, curveFill: false });
   const before = build(false), after = build(true);
   assert(before.props.length === 0, `normal pass changed: ${before.props.length} walls`);
   assert(after.props.length >= 16, `the struts should get walls: ${after.props.length}`);
