@@ -33,6 +33,7 @@
  */
 import { PROP } from './config.js';
 import { splitRegion, tubeLine } from './tracks.js';
+import { planFootprint } from './plan.js';
 
 const CELL = 0.5;            // mm, plan raster
 // A strut's underside is at most NET_HALF from its edge (99th percentile of the
@@ -53,47 +54,13 @@ export function latticeStruts(topo, faces, seated) {
   for (const f of faces) area += topo.area[f];
   if (area < PROP.tubeMinArea) return null;          // small regions already take the tube route
 
-  // --- footprint raster ----------------------------------------------------
+  // --- footprint raster, narrow everywhere? --------------------------------
   const tri = faces.map(seated);
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const t of tri) for (const v of t) {
-    if (v[0] < x0) x0 = v[0]; if (v[0] > x1) x1 = v[0];
-    if (v[1] < y0) y0 = v[1]; if (v[1] > y1) y1 = v[1];
-  }
-  x0 -= 2 * CELL; y0 -= 2 * CELL;
-  const W = Math.ceil((x1 - x0) / CELL) + 3, H = Math.ceil((y1 - y0) / CELL) + 3;
-  if (W * H > 4e6) return null;                      // a 1 m part: not a strut net
-  const idx = (i, j) => j * W + i;
-  const cellOf = (x, y) => [Math.floor((x - x0) / CELL), Math.floor((y - y0) / CELL)];
-  const fp = new Uint8Array(W * H);
-  for (const [a, b, c] of tri) {
-    const [i0, j0] = cellOf(Math.min(a[0], b[0], c[0]), Math.min(a[1], b[1], c[1]));
-    const [i1, j1] = cellOf(Math.max(a[0], b[0], c[0]), Math.max(a[1], b[1], c[1]));
-    const d = (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]);
-    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-      const px = x0 + (i + 0.5) * CELL, py = y0 + (j + 0.5) * CELL;
-      if (Math.abs(d) < 1e-12) { fp[idx(i, j)] = 1; continue; }   // edge-on: its box is a sliver anyway
-      const u = ((b[0] - px) * (c[1] - py) - (c[0] - px) * (b[1] - py)) / d;
-      const v = ((c[0] - px) * (a[1] - py) - (a[0] - px) * (c[1] - py)) / d;
-      const tol = CELL / Math.sqrt(Math.abs(d));    // a half-cell grace, so thin strips stay connected
-      if (u >= -tol && v >= -tol && 1 - u - v >= -tol) fp[idx(i, j)] = 1;
-    }
-  }
-
-  // --- narrow everywhere? (distance to the footprint's edge, chamfer 3-4) ----
-  const dist = new Float32Array(W * H);
-  for (let k = 0; k < W * H; k++) dist[k] = fp[k] ? 1e9 : 0;
-  const relax = (k, n, w) => { if (dist[n] + w < dist[k]) dist[k] = dist[n] + w; };
-  for (let j = 1; j < H - 1; j++) for (let i = 1; i < W - 1; i++) {
-    const k = idx(i, j); if (!fp[k]) continue;
-    relax(k, k - 1, 3); relax(k, k - W, 3); relax(k, k - W - 1, 4); relax(k, k - W + 1, 4);
-  }
-  for (let j = H - 2; j > 0; j--) for (let i = W - 2; i > 0; i--) {
-    const k = idx(i, j); if (!fp[k]) continue;
-    relax(k, k + 1, 3); relax(k, k + W, 3); relax(k, k + W + 1, 4); relax(k, k + W - 1, 4);
-  }
+  const plan = planFootprint(tri, CELL);
+  if (!plan) return null;                            // a 1 m part: not a strut net
+  const { W, H, fp, dist, idx, cellOf } = plan;
   const inside = [];
-  for (let k = 0; k < W * H; k++) if (fp[k]) inside.push((dist[k] / 3) * CELL);
+  for (let k = 0; k < W * H; k++) if (fp[k]) inside.push(dist[k]);
   inside.sort((a, b) => a - b);
   if (!inside.length || inside[Math.floor(0.99 * (inside.length - 1))] > NET_HALF) return null;
 
