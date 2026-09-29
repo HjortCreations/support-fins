@@ -98,6 +98,8 @@ function finOpts() {
            coverage: el('coverage').valueAsNumber / 100,
            // Auto places sway braces itself; in Draw they are clicked on by hand.
            sway: finMode === 'auto' && el('sway').checked ? { on: true, ...swayOpts() } : undefined,
+           // Experimental: tall walls regrouped onto trunks (fins/branching.js). Auto only.
+           branching: finMode === 'auto' && el('branching').checked,
            // The clearances have to travel WITH the request: the build runs in a
            // Worker with its own copy of fins.js / prop.js, which never sees what
            // applyMaterial and the gap fields set on this page's copy (fins.js

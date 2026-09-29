@@ -136,6 +136,7 @@ el('sway').addEventListener('change', () => {
   refreshFins();
 });
 el('tines').addEventListener('change', syncSway);
+el('branching').addEventListener('change', () => refreshFins());
 for (const id of ['sway-from', 'sway-spacing', 'sway-depth']) {
   el(id).addEventListener('input', () => debouncedRefresh());
 }
@@ -257,6 +258,7 @@ export function syncSectionSums() {
     ? `${el('sway-spacing').value} mm tines · ${el('sway-depth').value}% deep`
       + (el('sway-from').valueAsNumber > 0 ? ` · from ${el('sway-from').value} mm` : '')
     : 'off';
+  el('sum-experimental').textContent = el('branching').checked ? 'branching' : 'off';
   el('sum-display').textContent = el('highlight-small').checked ? 'small overhangs highlighted' : 'no highlight';
 }
 el('fin-opts').addEventListener('input', syncSectionSums);

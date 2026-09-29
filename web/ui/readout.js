@@ -316,6 +316,12 @@ function updateFinReadout(built, ms) {
       help.push('Each one stops a hair under the part (0.2mm) so it pops off instead of needing a cut.');
     }
   }
+  // Experimental branching: say it happened, and that it is still being tuned.
+  const br = built.branching;
+  if (br?.groups) {
+    lead.push(`branching: ${br.walls} tall wall${br.walls === 1 ? '' : 's'} on ${br.groups} trunk${br.groups === 1 ? '' : 's'}`);
+    help.push('Branching is experimental: check the overhangs between arms in your slicer preview before printing.');
+  }
   if (drawnOk) {
     lead.push(`plus ${drawnOk} wall${drawnOk === 1 ? '' : 's'} you added by hand`);
   }
