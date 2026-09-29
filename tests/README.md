@@ -138,6 +138,16 @@ same `stepObjects()` the app's worker output goes through):
 - the imported part runs through `analyze` + `buildFins` and gets a fin.
 Fixtures (`tests/fixtures/*.step`) are made with FreeCAD.
 
+**`branching.test.js`** -- experimental branching (`web/fins/branching.js`), stress
+torus + tube at X30:
+- **off by default** (and ignored outside Auto): the build is unchanged;
+- fin ranges still **cover the build exactly** (per-fin removal keeps working);
+- the arms keep the walls' top lines and **their own tines** -- the count is unchanged
+  (re-emitting against the whole part lost 6 of 54 on the torus);
+- trunk and arms **never fuse into the part**; a plate trunk stands on a **one-layer pad**
+  (print 1 fell off the plate without it);
+- a trunk can carry **two walls** (the tube).
+
 **`sway.test.js`** -- sway braces (`web/sway.js`) on a 150 mm post (plain blocks,
 no stress models needed):
 - a tall part gets braces, watertight, and the **rib never fuses** into the part;

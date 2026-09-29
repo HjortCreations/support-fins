@@ -25,6 +25,7 @@
  *   seating.js    how the part sits on the plate: contact, face/edge/point
  *   pad.js        PAD and the bed pad (conforming oval, or the brim-style one)
  *   wedges.js     angled wedges where no wall reaches; gripPatches for Draw
+ *   branching.js  experimental: tall neighbouring walls regrouped onto one trunk + arms
  *
  * Each module imports only modules above it in this list and never fins.js.
  */
@@ -36,6 +37,7 @@ import { CUT, CUTOUT_PATTERNS } from './cutout.js';
 import { FIN } from './fins/config.js';
 import { buildPad, PAD } from './fins/pad.js';
 import { bedContact, seatedPartTris, seatingOf } from './fins/seating.js';
+import { branchWalls } from './fins/branching.js';
 import { buildPerpFins, PERP, propServesPatch, unservedAfterWedges, wedgeVeto } from './fins/wedges.js';
 
 // Moved into web/fins/ (one module per concern); re-exported here so every
@@ -43,6 +45,7 @@ import { buildPerpFins, PERP, propServesPatch, unservedAfterWedges, wedgeVeto } 
 export { FIN } from './fins/config.js';
 export { PAD } from './fins/pad.js';
 export { gripPatches, perpColumns } from './fins/wedges.js';
+export { BRANCH } from './fins/branching.js';
 
 /**
  * Wedge row pitch for a coverage setting, mirroring prop.js's coverRowSpan: 0.5 is
@@ -97,6 +100,7 @@ export function applyTunables(t) {
  *                      wedges under the faces no wall reached). 'stabilize' is
  *                      an old name for 'auto'; any other mode builds 'prop'.
  * @param opts.bedPad   add the pad when bed contact is too small to hold
+ * @param opts.branching  experimental, Auto only: regroup tall walls onto trunks (fins/branching.js)
  */
 export function buildFins(topo, result, rot, opts = {}) {
   const built = buildFinsAndBraces(topo, result, rot, opts);
@@ -108,7 +112,11 @@ export function buildFins(topo, result, rot, opts = {}) {
 
 function buildFinsAndBraces(topo, result, rot, opts = {}) {
   applyTunables(opts.tunables);
-  const built = buildFinsCore(topo, result, rot, opts);
+  let built = buildFinsCore(topo, result, rot, opts);
+  // Branching rewrites Auto's walls, so it runs before the braces stand clear of them.
+  if (opts.branching && (built.mode === 'auto' || built.mode === 'stabilize')) {
+    built = branchWalls(topo, result, rot, built, opts);
+  }
   // Sway braces are an optional ADD-ON to whatever the mode placed (sway.js): a
   // tall part still needs its overhangs held, and bracing its sides is a
   // separate job on separate faces.

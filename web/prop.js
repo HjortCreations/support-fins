@@ -347,6 +347,8 @@ function buildPass(topo, result, rot, opts, raster) {
         props.push({ ...pa.prop, area: patch.area, region: patch.region, tines: nT,
                      caps: c0 === null ? undefined : [c0, capAt()], grip: gripFrom(g0),
                      trimmed: line.length - pa.prop.stations,
+                     // where the tines start inside the range (branching keeps them)
+                     tineOff: g0 - tri0,
                      id: nextId++, kind: 'prop',
                      triRanges: [[tri0, out.length]] });
         continue;
@@ -517,6 +519,9 @@ function buildPass(topo, result, rot, opts, raster) {
           // it, so on the successful try it points at this wall. emitTines just
           // pushed its tines right after, so wall + tines are one contiguous segment.
           triRanges: [[before, out.length]],
+          // where the tines start inside the range (fins/branching.js keeps them
+          // when it swaps the wall for an arm with the same top line)
+          tineOff: g0 - before,
         });
         for (let k = run[0] + run2[0]; k < run[0] + run2[1]; k++) claimed[k] = true;
         placed = true;
