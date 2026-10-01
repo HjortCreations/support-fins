@@ -14,9 +14,13 @@ Edit > Preferences > Get Extensions > (menu) Install from Disk.
    (plugins/shared/bundle.py; needs esbuild via npx).
 3. Ships the mini-racer wheel for the platform and lists it in blender_manifest.toml:
    Blender installs an extension's wheels itself, so nothing is vendored by hand.
-   Wheels are cached in build/wheels/ (plugins/shared/vendor.py).
+   Wheels are cached in build/wheels/ (plugins/shared/vendor.py). The wheel is
+   flattened first (flat_wheel): Blender before 4.4 can't install mini-racer as
+   published.
 """
 import argparse
+import csv
+import io
 import pathlib
 import shutil
 import sys
@@ -50,6 +54,34 @@ def this_platform():
     sys.exit(f"no Blender build for this machine ({tag}); pass --platform or --all")
 
 
+def flat_wheel(src, dest_dir):
+    """mini-racer's wheel with its package at the root, written to dest_dir/<same name>.
+
+    It is published with py_mini_racer/ under mini_racer-X.data/purelib/. Blender 4.4+
+    maps that into site-packages; 4.2 and 4.3 unpack it as is, so `import py_mini_racer`
+    fails (seen in CI on 4.2.23). Moving the package to the root is the same install
+    for every Blender and for pip: same files, same hashes, RECORD's paths updated.
+    """
+    dest = pathlib.Path(dest_dir) / pathlib.Path(src).name
+    with zipfile.ZipFile(src) as zin, zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as zout:
+        prefix = next(n.split("/", 1)[0] for n in zin.namelist() if ".data/" in n) + "/"
+        def flat(name):
+            for scheme in ("purelib/", "platlib/"):
+                if name.startswith(prefix + scheme):
+                    return name[len(prefix + scheme):]
+            return name
+        for info in zin.infolist():
+            data = zin.read(info)
+            if info.filename.endswith(".dist-info/RECORD"):
+                rows = list(csv.reader(io.StringIO(data.decode("utf-8"))))
+                out = io.StringIO()
+                csv.writer(out, lineterminator="\n").writerows([[flat(r[0])] + r[1:] for r in rows if r])
+                data = out.getvalue().encode("utf-8")
+            info.filename = flat(info.filename)
+            zout.writestr(info, data)
+    return dest
+
+
 def stage(dest, platform, engine_js):
     """The extension's files for `platform`, in dest/."""
     shutil.copytree(HERE / "support_fins", dest, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
@@ -60,7 +92,7 @@ def stage(dest, platform, engine_js):
     shutil.copy2(ROOT / "LICENSE", dest / "LICENSE-engine")   # web/*.js in the bundle: MIT
     whl = mini_racer_wheel(BLENDER[platform], OUT / "wheels")
     (dest / "wheels").mkdir()
-    shutil.copy2(whl, dest / "wheels" / whl.name)
+    flat_wheel(whl, dest / "wheels")
     manifest = dest / "blender_manifest.toml"
     text = manifest.read_text(encoding="utf-8")
     extra = f'platforms = ["{platform}"]\nwheels = ["./wheels/{whl.name}"]\n\n[permissions]'
