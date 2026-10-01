@@ -22,7 +22,7 @@ _visible_cache = {}
 def _overlays_changed(self, context):
     for obj in context.scene.objects:
         if obj.get("sf_role") == "overhangs":
-            obj.hide_set(not self.show_overhangs)
+            engine.set_hidden(obj, not self.show_overhangs)
 
 
 def _settings_class():
@@ -100,14 +100,15 @@ class SUPPORTFINS_PT_main(bpy.types.Panel):
         row.operator("support_fins.draw", text="Lay face flat", icon="SNAP_FACE").kind = "FACE"
 
         report = part.get("sf_report")
-        if report:
+        why = out_of_date(part, scene)
+        if report or why:
             box = layout.box()
-            why = out_of_date(part, scene)
             if why:
                 _wrapped(box, f"Out of date: {why}. Generate again.", "ERROR")
-            for i, line in enumerate(report.split("; ")):
+            for i, line in enumerate(report.split("; ") if report else []):
                 _wrapped(box, line, "CHECKMARK" if i == 0 else "ERROR")
-            box.prop(scene.support_fins, "show_overhangs")
+            if report:
+                box.prop(scene.support_fins, "show_overhangs")
 
         settings = scene.support_fins
         for title, specs in schema.sections(engine.SCHEMA):
@@ -136,8 +137,23 @@ def _depsgraph_changed(scene, depsgraph):
     for u in depsgraph.updates:
         if u.is_updated_geometry and isinstance(u.id, bpy.types.Object):
             obj = u.id.original
-            if "sf_report" in obj:
+            if "sf_matrix" in obj:
                 EDITED.add(obj.as_pointer())
+
+
+@bpy.app.handlers.persistent
+def _file_loaded(*_):
+    # EDITED is per session: an edit saved since the fins were built shows up as a
+    # changed mesh fingerprint instead (once per file load; not per redraw).
+    EDITED.clear()
+    context = bpy.context
+    for obj in bpy.data.objects:
+        if obj.get("sf_mesh") and obj.type == "MESH":
+            try:
+                if engine.mesh_key(obj, context) != obj["sf_mesh"]:
+                    EDITED.add(obj.as_pointer())
+            except Exception:  # noqa: BLE001 -- e.g. not in this scene's depsgraph
+                pass
 
 
 def built(part):
@@ -152,9 +168,13 @@ def register():
     bpy.types.Scene.support_fins = PointerProperty(type=SupportFinsSettings)
     if _depsgraph_changed not in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.append(_depsgraph_changed)
+    if _file_loaded not in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.append(_file_loaded)
 
 
 def unregister():
     if _depsgraph_changed in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(_depsgraph_changed)
+    if _file_loaded in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(_file_loaded)
     del bpy.types.Scene.support_fins

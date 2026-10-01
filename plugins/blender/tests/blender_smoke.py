@@ -118,6 +118,25 @@ c.view_layer.update()
 assert ui.out_of_date(part, scene) == "the part was edited", ui.out_of_date(part, scene)
 generate()
 assert ui.out_of_date(part, scene) is None
+# an edit saved before the file was reopened: the mesh fingerprint catches it
+ui._file_loaded()
+assert ui.out_of_date(part, scene) is None, "a fresh load called unedited fins out of date"
+bm = bmesh.new()
+bm.from_mesh(part.data)
+bm.verts.ensure_lookup_table()
+bm.verts[0].co.z -= 0.5
+bm.to_mesh(part.data)
+bm.free()
+part.data.update()
+ui.EDITED.clear()                      # as after a reload: the session's note is gone
+ui._file_loaded()
+assert ui.out_of_date(part, scene) == "the part was edited"
+generate()
+# the unit scale is part of what the fins were built for
+scene.unit_settings.scale_length = 0.01
+assert ui.out_of_date(part, scene) == "the settings changed"
+bpy.ops.support_fins.millimetres()
+assert ui.out_of_date(part, scene) is None
 print("OUT_OF_DATE", flush=True)
 
 # settings come from options.json, and hide when the engine would ignore them
@@ -176,6 +195,13 @@ assert wall is not None, reason
 assert wall.parent == block and wall["sf_role"] == "drawn" and closed(wall)
 none, reason = engine.draw_wall(block, (-8, -5, 11.97), (-6, -5, 11.97), c)
 assert none is None and "too short" in reason, reason
+# a drawn wall alone (no Generate yet) is for this pose: moving the part says so
+assert ui.out_of_date(block, scene) is None
+block.location.x += 3
+c.view_layer.update()
+assert ui.out_of_date(block, scene) == "the part moved", ui.out_of_date(block, scene)
+block.location.x -= 3
+c.view_layer.update()
 generate()                                   # Generate re-stands the drawn wall too
 assert len(fins_of(block, ["drawn"])) == 1 and wall.visible_get()
 assert "drawn walls not built" not in block["sf_report"]
@@ -193,7 +219,26 @@ down = n[:, 2] < -0.99999          # (float32 vertices: the turn lands to ~1e-7 
 assert down.sum() == 2, "the end face is two triangles"
 assert np.abs(soup[down][..., 2] - low).max() < 1e-3, "the clicked face isn't on the bed"
 assert not fins_of(block), "the old pose's fins are still there"
-print("LAY_FLAT", flush=True)
+assert ui.out_of_date(block, scene) == "the part moved"
+generate()                                   # the drawn wall is re-stood or says why not
+w = fins_of(block, ["drawn"])[0]
+assert w.visible_get() or "drawn walls not built" in block["sf_report"], block["sf_report"]
+print("LAY_FLAT", block["sf_report"], flush=True)
+
+# Show overhangs with an overlay in a collection the view layer excludes: no error,
+# and the other overlays still toggle
+hidden = bpy.data.collections.new("excluded")
+scene.collection.children.link(hidden)
+stray = bpy.data.objects.new("stray overhangs", bpy.data.meshes.new("stray"))
+stray["sf_role"] = "overhangs"
+hidden.objects.link(stray)
+c.view_layer.layer_collection.children["excluded"].exclude = True
+others = [x for x in scene.objects if x.get("sf_role") == "overhangs" and x is not stray]
+assert others
+scene.support_fins.show_overhangs = False
+assert all(not x.visible_get() for x in others), "an excluded overlay stopped the toggle"
+scene.support_fins.show_overhangs = True
+assert all(x.visible_get() for x in others)
 
 # ---- units: a part read in metres is called out ------------------------------
 scene.unit_settings.scale_length = 1.0

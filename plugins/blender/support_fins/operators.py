@@ -58,16 +58,19 @@ class SUPPORTFINS_OT_clear(bpy.types.Operator):
         for o in engine.children(part, {"fin", "drawn", "overhangs"}):
             engine.remove(o)
         ui.built(part)
-        for k in ("sf_report", "sf_matrix", "sf_settings"):
+        for k in ("sf_report", "sf_matrix", "sf_settings", "sf_mesh", "sf_drawn"):
             if k in part:
                 del part[k]
         return {"FINISHED"}
 
 
-def _ray(context, event, obj):
-    """Where the mouse ray hits obj: (hit, world point, world normal)."""
-    region, rv3d = context.region, context.region_data
-    xy = (event.mouse_region_x, event.mouse_region_y)
+def _ray(region, rv3d, event, obj, context):
+    """Where the mouse ray hits obj: (hit, world point, world normal). `region` is the
+    viewport's WINDOW region: the operator starts from the sidebar, and a modal keeps
+    the region it started in, so context.region / mouse_region_x would be the panel's."""
+    xy = (event.mouse_x - region.x, event.mouse_y - region.y)
+    if not (0 <= xy[0] < region.width and 0 <= xy[1] < region.height):
+        return False, None, None
     origin = view3d_utils.region_2d_to_origin_3d(region, rv3d, xy)
     direction = view3d_utils.region_2d_to_vector_3d(region, rv3d, xy)
     ev = obj.evaluated_get(context.evaluated_depsgraph_get())
@@ -87,7 +90,8 @@ class SUPPORTFINS_OT_draw(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     kind: EnumProperty(items=[("WALL", "Draw wall", "Click two points under an overhang"),
-                              ("FACE", "Lay face flat", "Click a face to put it down on the bed")])
+                              ("FACE", "Lay face flat", "Click a face to put it down on the bed")],
+                       options={"HIDDEN", "SKIP_SAVE"})
 
     @classmethod
     def poll(cls, context):
@@ -99,28 +103,32 @@ class SUPPORTFINS_OT_draw(bpy.types.Operator):
         self._a = None
         self._hover = None
         self._area = context.area
+        self._region = next(r for r in context.area.regions if r.type == "WINDOW")
+        self._rv3d = context.space_data.region_3d
         self._handle = bpy.types.SpaceView3D.draw_handler_add(self._preview, (), "WINDOW", "POST_VIEW")
-        self._say(context, "click the first end of the wall, under the overhang" if self.kind == "WALL"
+        self._say("click the first end of the wall, under the overhang" if self.kind == "WALL"
                   else "click the face to put down on the bed")
         context.window_manager.modal_handler_add(self)
         return {"RUNNING_MODAL"}
 
-    def _say(self, context, text):
-        context.area.header_text_set(f"Support Fins: {text}  ·  Esc / right click cancels")
+    def _say(self, text):
+        self._area.header_text_set(f"Support Fins: {text}  ·  Esc / right click cancels")
 
     def _preview(self):
         if self._a is None or self._hover is None:
             return
         import gpu
         from gpu_extras.batch import batch_for_shader
-        shader = gpu.shader.from_builtin("UNIFORM_COLOR")
+        # POLYLINE: a plain line width is ignored on Metal / Vulkan
+        shader = gpu.shader.from_builtin("POLYLINE_UNIFORM_COLOR")
         batch = batch_for_shader(shader, "LINES", {"pos": [self._a, self._hover]})
+        region = bpy.context.region
         gpu.state.depth_test_set("NONE")
-        gpu.state.line_width_set(3)
         shader.bind()
+        shader.uniform_float("viewportSize", (region.width, region.height))
+        shader.uniform_float("lineWidth", 3.0)
         shader.uniform_float("color", engine.DRAWN_COLOR)
         batch.draw(shader)
-        gpu.state.line_width_set(1)
         gpu.state.depth_test_set("LESS_EQUAL")
 
     def _finish(self):
@@ -131,17 +139,27 @@ class SUPPORTFINS_OT_draw(bpy.types.Operator):
         self._area.tag_redraw()
 
     def modal(self, context, event):
+        # Any error ends the tool cleanly: no preview handler or header text left behind
+        # (an undo or a delete mid-tool can pull the part out from under it).
+        try:
+            return self._step(context, event)
+        except Exception as e:  # noqa: BLE001
+            self._finish()
+            self.report({"ERROR"}, str(e).splitlines()[0][:300])
+            return {"CANCELLED"}
+
+    def _step(self, context, event):
         if event.type in {"ESC", "RIGHTMOUSE"}:
             self._finish()
             return {"CANCELLED"}
         if event.type == "MOUSEMOVE" and self._a is not None:
-            hit, p, _ = _ray(context, event, self._part)
+            hit, p, _ = _ray(self._region, self._rv3d, event, self._part, context)
             self._hover = p if hit else None
             self._area.tag_redraw()
         if event.type == "LEFTMOUSE" and event.value == "PRESS":
-            hit, p, n = _ray(context, event, self._part)
+            hit, p, n = _ray(self._region, self._rv3d, event, self._part, context)
             if not hit:
-                return {"RUNNING_MODAL"}
+                return {"PASS_THROUGH"}       # off the part, or a click in the panel
             if self.kind == "FACE":
                 self._finish()
                 lay_face_flat(self._part, n, context)
@@ -149,14 +167,10 @@ class SUPPORTFINS_OT_draw(bpy.types.Operator):
                 return {"FINISHED"}
             if self._a is None:
                 self._a = p
-                self._say(context, "click the other end")
+                self._say("click the other end")
                 return {"RUNNING_MODAL"}
             self._finish()
-            try:
-                wall, reason = engine.draw_wall(self._part, self._a, p, context)
-            except Exception as e:  # noqa: BLE001
-                self.report({"ERROR"}, str(e).splitlines()[0][:300])
-                return {"CANCELLED"}
+            wall, reason = engine.draw_wall(self._part, self._a, p, context)
             if wall is None:
                 self.report({"WARNING"}, f"No wall: {reason}")
                 return {"CANCELLED"}
@@ -222,7 +236,12 @@ class SUPPORTFINS_OT_export_3mf(bpy.types.Operator, ExportHelper):
         except Exception as e:  # noqa: BLE001
             self.report({"ERROR"}, str(e).splitlines()[0][:300])
             return {"CANCELLED"}
-        self.report({"INFO"}, f"Saved {os.path.basename(self.filepath)}: the part + {len(meshes) - 1} fin objects")
+        why = ui.out_of_date(part, context.scene)
+        if why:
+            self.report({"WARNING"}, f"Saved {os.path.basename(self.filepath)}, but the fins are out of date "
+                                     f"({why}): Generate and export again")
+        else:
+            self.report({"INFO"}, f"Saved {os.path.basename(self.filepath)}: the part + {len(meshes) - 1} fin objects")
         return {"FINISHED"}
 
 

@@ -44,7 +44,10 @@ BLENDER = {
 
 def this_platform():
     tag = wheel_platform()
-    return next(p for p, t in BLENDER.items() if t == tag)
+    for p, t in BLENDER.items():
+        if t == tag:
+            return p
+    sys.exit(f"no Blender build for this machine ({tag}); pass --platform or --all")
 
 
 def stage(dest, platform, engine_js):

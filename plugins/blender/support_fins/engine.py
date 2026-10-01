@@ -14,8 +14,10 @@ Fins are objects parented to the part, one per wall / brace / pad (the engine's
            amber faces, so an overhang nothing holds is shown, not hidden)
   sf_a/sf_b  a drawn wall's ends, in the part's local coordinates, so Generate can
              rebuild it for the part's current pose (the site's rebuildDrawn)
-The part carries sf_report (the result line), sf_matrix and sf_settings (what it
-was built for, to tell the user when the fins are out of date).
+The part carries sf_report (the result line, after Generate) and sf_matrix /
+sf_settings / sf_mesh (the pose, settings + unit scale, and a mesh fingerprint its
+fins were built for -- set by Generate or the first drawn wall -- to tell the user
+when the fins are out of date).
 """
 import json
 import pathlib
@@ -40,7 +42,10 @@ _ctx = None
 
 def ctx():
     """The V8 context with the engine bundle (started once, ~0.1 s). With V8's JIT:
-    Blender's macOS app is signed to allow it, and jitless is ~25x slower on a big part."""
+    Blender's macOS app is signed to allow it (com.apple.security.cs.allow-jit), and
+    jitless is ~25x slower on a big part. A Blender build without that entitlement
+    would crash on JIT memory rather than fall back: check it on new major versions
+    (codesign -d --entitlements - Blender.app)."""
     global _ctx
     if _ctx is None:
         _ctx = host.host_engine((HERE / "fins_engine.js").read_text(encoding="utf-8"), jit=True)
@@ -112,17 +117,39 @@ def engine_options(scene):
 
 
 def settings_key(scene):
-    return json.dumps(dialog_values(scene), sort_keys=True)
+    # the unit scale too: the same part at another scale is another size in mm
+    return json.dumps({**dialog_values(scene), "mmPerUnit": mm_per_unit(scene)}, sort_keys=True)
 
 
 def matrix_key(obj):
     return json.dumps([round(x, 9) for row in obj.matrix_world for x in row])
 
 
+def mesh_key(obj, context):
+    """A cheap fingerprint of the part's evaluated mesh (count + coordinate sums), to
+    notice an edit made before the file was saved and reopened."""
+    ev = obj.evaluated_get(context.evaluated_depsgraph_get())
+    me = ev.to_mesh()
+    try:
+        co = np.empty(len(me.vertices) * 3, dtype=np.float32)
+        me.vertices.foreach_get("co", co)
+    finally:
+        ev.to_mesh_clear()
+    sums = co.reshape(-1, 3).astype(np.float64).sum(axis=0) if len(co) else np.zeros(3)
+    return json.dumps([len(co) // 3] + [round(float(v), 4) for v in sums])
+
+
+def stamp(part, context):
+    """Record what the part's fins are built for: its pose, settings and mesh."""
+    part["sf_matrix"] = matrix_key(part)
+    part["sf_settings"] = settings_key(context.scene)
+    part["sf_mesh"] = mesh_key(part, context)
+
+
 def out_of_date(part, scene):
-    """Why the fins no longer match the part's pose or the settings, or None. Edits
-    to the mesh itself are caught by ui.py's depsgraph handler."""
-    if "sf_report" not in part:
+    """Why the fins (auto or drawn) no longer match the part's pose or the settings,
+    or None. Edits to the mesh itself are caught by ui.py's handlers."""
+    if "sf_matrix" not in part:
         return None
     if part.get("sf_matrix") != matrix_key(part):
         return "the part moved"
@@ -142,6 +169,15 @@ def remove(obj):
     bpy.data.objects.remove(obj, do_unlink=True)
     if data is not None and data.users == 0:
         bpy.data.meshes.remove(data)
+
+
+def set_hidden(obj, hidden):
+    """hide_set, for an object that may sit in a collection the view layer excludes
+    (hide_set raises there; it's hidden anyway)."""
+    try:
+        obj.hide_set(hidden)
+    except RuntimeError:     # (Blender still prints its "can't be hidden" line)
+        pass
 
 
 def _material(name, color):
@@ -182,7 +218,9 @@ def generate(part, context):
     scene = context.scene
     soup = part_soup(part, context)
     options = engine_options(scene)
+    # Every engine call first: if one fails, the scene is still as it was.
     fins, stats, pieces, over, small = host.host_compute_pieces(ctx(), soup, options)
+    drawn = [(wall, drawn_wall_tris(wall, part, soup, options, scene)) for wall in children(part, {"drawn"})]
 
     for o in children(part, {"fin", "overhangs"}):
         remove(o)
@@ -194,10 +232,10 @@ def generate(part, context):
                         tris, part, scene, "fin", FIN_COLOR)
 
     problems = []
-    for wall in children(part, {"drawn"}):
-        reason = rebuild_drawn(wall, part, soup, options, scene)
-        if reason:
-            problems.append(f"{wall.name}: {reason}")
+    for wall, (tris, info) in drawn:
+        if tris is None:
+            problems.append(f"{wall.name}: {info}")
+        restand_drawn(wall, part, tris, scene)
 
     for faces, label, color in ((over, "overhangs", OVER_COLOR), (small, "too small to fin", SMALL_COLOR)):
         if len(faces):
@@ -205,14 +243,13 @@ def generate(part, context):
             o.hide_select = True
             o.hide_render = True
             o.show_in_front = True
-            o.hide_set(not scene.support_fins.show_overhangs)
+            set_hidden(o, not scene.support_fins.show_overhangs)
 
     report = host.host_report(stats)
     if problems:
         report += "; drawn walls not built: " + "; ".join(problems)
     part["sf_report"] = report
-    part["sf_matrix"] = matrix_key(part)
-    part["sf_settings"] = settings_key(scene)
+    stamp(part, context)
     return report
 
 
@@ -228,33 +265,46 @@ def draw_wall(part, a_world, b_world, context):
                                      engine_options(scene))
     if tris is None:
         return None, info
-    n = len(children(part, {"drawn"})) + 1
+    n = part.get("sf_drawn", 0) + 1
+    part["sf_drawn"] = n
     wall = mesh_object(f"{part.name} drawn wall {n}", tris, part, scene, "drawn", DRAWN_COLOR)
     inv = part.matrix_world.inverted()
     wall["sf_a"] = list(inv @ Vector(a_world))
     wall["sf_b"] = list(inv @ Vector(b_world))
+    if "sf_matrix" not in part:
+        # A drawn wall is for this pose too: moving the part now must say so, Generate
+        # or not. (If Generate's fins are already out of date, they stay that way.)
+        stamp(part, context)
     return wall, None
 
 
-def rebuild_drawn(wall, part, soup, options, scene):
-    """Re-stand a drawn wall for the part's current pose. Returns None, or why it
-    can't be built any more (the old wall is kept until then, hidden)."""
+def drawn_wall_tris(wall, part, soup, options, scene):
+    """A drawn wall for the part's current pose: host_draw_wall's (tris, stats), or
+    (None, why it can't be built any more)."""
     k = mm_per_unit(scene)
     a = part.matrix_world @ Vector(wall["sf_a"])
     b = part.matrix_world @ Vector(wall["sf_b"])
-    tris, info = host.host_draw_wall(ctx(), soup, [v * k for v in a], [v * k for v in b], options)
+    return host.host_draw_wall(ctx(), soup, [v * k for v in a], [v * k for v in b], options)
+
+
+def restand_drawn(wall, part, tris, scene):
+    """Give the drawn wall its new triangles; with None, hide it (kept, so it comes
+    back when the part is turned back)."""
     if tris is None:
-        wall.hide_set(True)
-        return info
-    me = _mesh(wall.data.name, tris, scene, "drawn", DRAWN_COLOR)
+        wall["sf_unbuilt"] = True
+        set_hidden(wall, True)
+        return
     old = wall.data
-    wall.data = me
+    name = old.name
+    wall.data = _mesh(name + " (new)", tris, scene, "drawn", DRAWN_COLOR)
     if old.users == 0:
         bpy.data.meshes.remove(old)
+    wall.data.name = name
     wall.matrix_parent_inverse = part.matrix_world.inverted()
     wall.matrix_basis.identity()
-    wall.hide_set(False)
-    return None
+    if wall.get("sf_unbuilt"):           # hidden because it didn't fit; a wall the user
+        del wall["sf_unbuilt"]           # hid stays hidden
+        set_hidden(wall, False)
 
 
 # ---- export ----------------------------------------------------------------
@@ -265,5 +315,8 @@ def export_meshes(part, context):
     for obj in [part] + [o for o in children(part, {"fin", "drawn"}) if o.visible_get()]:
         soup = part_soup(obj, context)
         verts, inverse = np.unique(soup.reshape(-1, 3), axis=0, return_inverse=True)
-        out.append((obj.name, verts.tolist(), inverse.reshape(-1, 3).tolist()))
+        faces = inverse.reshape(-1, 3)
+        # a 3MF triangle must have three different vertices: drop ones the weld closed
+        faces = faces[(faces[:, 0] != faces[:, 1]) & (faces[:, 1] != faces[:, 2]) & (faces[:, 0] != faces[:, 2])]
+        out.append((obj.name, verts.tolist(), faces.tolist()))
     return out
