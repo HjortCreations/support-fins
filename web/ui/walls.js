@@ -281,7 +281,8 @@ function placeSecondPoint(hitPoint) {
     updateReadout(lastBuilt);
     return;
   }
-  drawMsg = '';
+  // a toothpick is lengthened, not refused (drawnWall): say so, the wall is longer than the line
+  drawMsg = r.stretched ? `lengthened that wall ${r.stretched.toFixed(1)} mm so it won’t tip over` : '';
   histPush();
   drawnWalls.push({ a: drawStart.clone(), b: part.worldToLocal(bWorld.clone()) });
   clearPreview();

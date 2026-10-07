@@ -196,19 +196,20 @@ export function drawnWall(a, b, tris, zBed = 0, opts = {}) {
   if (!first.ok) return { ...first, builds };
   const capOf = (r) => opts.maxAspect ?? (r.partAttached ? PROP.maxPartAspect : PROP.maxShortAspect);
   const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
-  let r = first;
-  for (let k = 0; k < 3; k++) {
-    const need = r.height / capOf(r);
+  let r = first, need = 0;
+  for (let k = 0; ; k++) {
+    need = r.height / capOf(r);
     if (r.length >= need - 1e-6) return r === first ? { ...r, builds } : { ...r, builds, stretched: r.length - first.length };
+    if (k === 3) break;                        // three stretches: a ceiling still stepping up
     const s = (need + 0.05) / first.length;   // a hair over, so float noise can't land under
     const at = (p) => p.map((v, i) => mid[i] + (v - mid[i]) * s);
     builds++;
     r = drawnWallAt(at(a), at(b), tris, zBed, opts);
     if (!r.ok) break;
   }
-  const need = first.height / capOf(first);
+  const why = r.ok ? 'it grows taller as it lengthens' : r.reason.split(' — ')[0];
   return { ok: false, builds, reason: `too slender — a ${first.length.toFixed(1)}mm wall ${first.height.toFixed(0)}mm `
-    + `tall would tip over, and a ${need.toFixed(1)}mm one doesn’t fit there; draw it longer or rotate the part` };
+    + `tall would tip over, and the ${need.toFixed(1)}mm one it needs won’t build (${why}); draw it longer or rotate the part` };
 }
 
 /**

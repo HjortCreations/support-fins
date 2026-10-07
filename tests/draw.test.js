@@ -266,3 +266,12 @@ Deno.test('draw: a stocky wall is built exactly as drawn', () => {
   const r = drawnWall([-5, 0, 10], [5, 0, 10], slab.pos, 0);
   assert(r.ok && Math.abs(r.length - 10) < 1e-9 && r.stretched === undefined, 'a 10 mm x 10 mm wall was changed');
 });
+
+Deno.test('draw: a wall under a stepping ceiling is checked after its last stretch', () => {
+  // review: 3 mm under z 30, the longer lines reach the z 50 step -- heights 29.8, 39.8,
+  // 49.8; the third stretch (8.35 mm) fits its 49.8 mm and must be kept, not refused
+  const step = topoOf(block(-20, 2, -20, 20, 30, 32), block(2, 20, -20, 20, 50, 52));
+  const r = drawnWall([-1.5, 0, 30], [1.5, 0, 30], step.pos, 0);
+  assert(r.ok, `refused: ${r.reason}`);
+  assert(r.length * prop.PROP.maxShortAspect >= r.height - 1e-6, `still ${(r.height / r.length).toFixed(1)}:1`);
+});
