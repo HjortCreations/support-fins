@@ -175,7 +175,7 @@ loose is a result. The 3MF is re-packed deflated (the brim mesh is ~64k triangle
 local issue 007); no merged STL in `print/`.
 - **waiting on print.**
 
-### cutout/ -- what does each Cutouts style do to a tall wall? (Walls > Cutouts, CUT.pattern)
+### cutout/ -- what does each Cutouts style do to a tall wall? (Walls > Cutouts, CUT.pattern) -- NOT in the menu
 Bar on the plate, five identical 28 x 14 mm flat ledges 25 mm up (three near side,
 two far); the site's Auto build per ledge with Cutouts 1: none, 2: diamond,
 3: triangle, 4: arch, 5: lattice (style raised on top). Tall on purpose: cutouts open
@@ -184,13 +184,18 @@ per ledge (build.js; a cut wall's overlapping solids read a little high): none 1
 diamond 1230 (78 %), triangle 1230 (78 %), arch 1043 (66 %), lattice 1048 (67 %) mm3.
 For a user: the most open style whose walls stood, held their ledge flat and snapped
 off whole. Built for the Calibrate menu; also shows the Lattice style off.
+- **2026-10-07, PLA (Matthew):** every cut wall printed perfectly, all five styles --
+  but every LEDGE was bad: the overhang printed in midair and hung down; the inner wall
+  looked badly placed. Pulled from the Calibrate menu (not something to hand users);
+  the files stay here. The walls under each 14 mm ledge run along it at 7 mm from the
+  bar face and at the free edge (6.4 mm apart), across the slicer's bridge -- the same
+  layout the orient coupon printed well at 10 mm up, so why it failed at 25 mm is open.
 Found building it: a cut wall's solids share edges (4 or 6 triangles to an edge), which
 coupon.js's closed check refused; it now checks every directed edge has its reverse
 (closed, consistently wound bodies). Most of those shared edges are FLUSH, not
 overlapping -- web/cutout.js stacks slab pieces that meet exactly at their boundary
 (CUT.eps grows pieces only across the strip sides and into the bands). Already on
 main; it breaks the overlap-never-flush rule, so it's a follow-up.
-- **waiting on print.**
 
 ### bore/ -- do walls inside a sideways hole pull out clean, from what size, and which way?
 Block on the plate with eight through-bores along y, two sets of 3 / 5 / 8 / 12 mm,
@@ -209,7 +214,8 @@ For a user: pull every wall out an open end; note per bore clean / broke / stuck
 whether A or X left the better ceiling. If X wins, a bore's wall direction is worth
 changing in the engine.
 - **v1 (A only): waiting on print; not printed.** Replaced by this build.
-- **waiting on print.**
+- **2026-10-07, PLA (Matthew):** A (one wall ALONG the bore) is better than X (walls across).
+  The engine's bore walls stay as they are.
 
 ### sampler/ -- one part with every hard shape, as the site supports it (no setting)
 Not a rung coupon: a showcase that sets nothing. A spine on the plate with, front:
