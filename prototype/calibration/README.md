@@ -187,9 +187,11 @@ off whole. Built for the Calibrate menu; also shows the Lattice style off.
 - **2026-10-07, PLA (Matthew):** every cut wall printed perfectly, all five styles --
   but every LEDGE was bad: the overhang printed in midair and hung down; the inner wall
   looked badly placed. Pulled from the Calibrate menu (not something to hand users);
-  the files stay here. The walls under each 14 mm ledge run along it at 7 mm from the
-  bar face and at the free edge (6.4 mm apart), across the slicer's bridge -- the same
-  layout the orient coupon printed well at 10 mm up, so why it failed at 25 mm is open.
+  the files stay here. Why: in Matthew's slice the ledges' first layer ran PARALLEL to
+  the walls -- the orient coupon's junk case -- though PrusaSlicer's default profile
+  bridges across them. Same walls, different bridge direction: the slicer (or how it
+  was set up) picks it, so a wall layout that only works across the bridge is a gamble
+  (local issue 038).
 Found building it: a cut wall's solids share edges (4 or 6 triangles to an edge), which
 coupon.js's closed check refused; it now checks every directed edge has its reverse
 (closed, consistently wound bodies). Most of those shared edges are FLUSH, not
