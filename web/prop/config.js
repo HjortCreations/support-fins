@@ -60,6 +60,11 @@ export const PROP = {
   // "serves" a face stands a wedge or a raster row down (tests/tails.test.js).
   minSpanShort: 4.0,
   maxShortAspect: 6.0,
+  // ...and a wall standing on the PART (its height measured from its floor there) may be
+  // this slender: slender/'s coupon stood every part wall up to 7:1 (5.7 x 40 mm), and
+  // nothing past that was printed. Draw and the fill pass hold their walls to these two
+  // (web/draw.js drawnWall): Isaac's fill walls were 3 mm long and 26-49 mm tall.
+  maxPartAspect: 7.0,
   minHeight: 1.5,   // nor is one this short
   // SQUAT BED SUPPORT. A flanged T-wall needs ~minHeight of headroom just to
   // exist (gap 0.2 + baseH 0.6 + a sliver of tip taper), so a bed overhang lower

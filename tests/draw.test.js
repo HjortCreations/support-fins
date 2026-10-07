@@ -239,3 +239,30 @@ Deno.test('draw: a thin pin inside the flange footprint, between stations, refus
   const r = drawnWall([-10, 0, 20], [10, 0, 20], topo.pos, 0);
   assert(!r.ok && /too close/.test(r.reason), `expected 'too close', got ${r.ok ? 'a wall' : r.reason}`);
 });
+
+// SLENDERNESS (Isaac's fill walls were 3 mm long and 26-49 mm tall; a drawn wall had no
+// cap). A slab 30 mm up, nothing under it: a 3 mm line is lengthened about its middle
+// to maxShortAspect; beside a body that blocks the longer line it is refused, saying why.
+Deno.test('draw: a toothpick plate wall is lengthened to maxShortAspect', () => {
+  const slab = topoOf(block(-20, 20, -20, 20, 30, 32));
+  const r = drawnWall([-1.5, 0, 30], [1.5, 0, 30], slab.pos, 0);
+  assert(r.ok, `wall failed: ${r.reason}`);
+  assert(r.length * prop.PROP.maxShortAspect >= r.height, `still ${(r.height / r.length).toFixed(1)}:1`);
+  assert(r.stretched > 1.9, `stretched ${r.stretched}`);
+  assert(isClosed(r.tris), 'stretched wall is not closed');
+  const raw = drawnWall([-1.5, 0, 30], [1.5, 0, 30], slab.pos, 0, { maxAspect: Infinity });
+  assert(raw.ok && Math.abs(raw.length - 3) < 1e-9 && raw.stretched === undefined, 'maxAspect: Infinity left the line alone');
+});
+
+Deno.test('draw: a toothpick that cannot lengthen is refused with the reason', () => {
+  // the ledge is 5 mm wide, its +x end a body standing on the plate
+  const L = topoOf(block(-2.5, 2.5, -20, 20, 30, 32), block(2.5, 4.5, -20, 20, 0, 32));
+  const r = drawnWall([-1.5, 0, 30], [1.5, 0, 30], L.pos, 0);
+  assert(!r.ok && /too slender/.test(r.reason), `expected a slender refusal, got ${r.ok ? 'a wall' : r.reason}`);
+});
+
+Deno.test('draw: a stocky wall is built exactly as drawn', () => {
+  const slab = topoOf(block(-20, 20, -20, 20, 10, 12));
+  const r = drawnWall([-5, 0, 10], [5, 0, 10], slab.pos, 0);
+  assert(r.ok && Math.abs(r.length - 10) < 1e-9 && r.stretched === undefined, 'a 10 mm x 10 mm wall was changed');
+});

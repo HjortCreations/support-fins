@@ -178,14 +178,45 @@ export function drawnLine(a, b, tris, step = PROP.stationStep, band = Infinity, 
 }
 
 /**
- * Build one drawn breakaway wall. Returns `{ ok: true, tris, length, height, top }`
+ * Build one drawn breakaway wall, held STOCKY: a wall more than PROP.maxShortAspect x
+ * its length tall on the plate (PROP.maxPartAspect on the part, from its floor) is a
+ * toothpick the nozzle knocks off the plate -- the fill pass stood 3 mm walls 26-49 mm
+ * tall under a mini, and a drawn wall had no cap at all (Auto's short walls always
+ * did). Such a wall is LENGTHENED about its middle, along the drawn line, to the length
+ * its height needs, and rebuilt (its height can change with the line, so up to three
+ * times); if the longer line doesn't build, or still comes out too slender, the wall is
+ * refused with the reason. `opts.maxAspect` overrides both caps (the calibration
+ * coupons build past them on purpose). Returns what `drawnWallAt` returns, plus
+ * `stretched` (mm added) when the line was lengthened.
+ */
+export function drawnWall(a, b, tris, zBed = 0, opts = {}) {
+  const first = drawnWallAt(a, b, tris, zBed, opts);
+  if (!first.ok) return first;
+  const capOf = (r) => opts.maxAspect ?? (r.partAttached ? PROP.maxPartAspect : PROP.maxShortAspect);
+  const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+  let r = first;
+  for (let k = 0; k < 3; k++) {
+    const need = r.height / capOf(r);
+    if (r.length >= need - 1e-6) return r === first ? r : { ...r, stretched: r.length - first.length };
+    const s = (need + 0.05) / first.length;   // a hair over, so float noise can't land under
+    const at = (p) => p.map((v, i) => mid[i] + (v - mid[i]) * s);
+    r = drawnWallAt(at(a), at(b), tris, zBed, opts);
+    if (!r.ok) break;
+  }
+  const need = first.height / capOf(first);
+  return { ok: false, reason: `too slender — a ${first.length.toFixed(1)}mm wall ${first.height.toFixed(0)}mm `
+    + `tall would tip over, and a ${need.toFixed(1)}mm one doesn’t fit there; draw it longer or rotate the part` };
+}
+
+/**
+ * Build one drawn breakaway wall exactly along a -> b (no slenderness cap). Returns `{ ok: true, tris, length, height, top }`
  * (`top`: the wall's contact line, the surface-z stations its top follows).
  * `opts.under`: follow only down-facing surfaces (drawnLine) -- the fill pass's walls.
  * or `{ ok: false, reason }` with a message the UI can show -- a hand-drawn wall
  * that can't be built should say WHY (too short, at the plate) rather than
  * silently doing nothing, the failure mode M5's scoreboard was built on.
  */
-export function drawnWall(a, b, tris, zBed = 0, opts = {}) {
+function drawnWallAt(a, b, tris, zBed = 0, opts = {}) {
   const dx = b[0] - a[0], dy = b[1] - a[1];
   const len = Math.hypot(dx, dy);
   if (len < DRAW_MIN_LEN) {
