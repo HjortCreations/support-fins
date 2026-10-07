@@ -178,11 +178,13 @@ el('cutout').addEventListener('change', () => {
   refreshFins();
 });
 
-// Interface material (GitHub #21): each wall's top band and its tines become their
-// own solid, exported as a third 3MF object. PROP.iface is read fresh by every wall
-// sweep -- the drawn walls here, the auto walls in the Worker via tunables.
+// Interface material (GitHub #21): a wall's top band becomes its own solid, exported
+// as a part of the supports in the 3MF -- under flat contacts, or everywhere (tines
+// too). PROP.iface is read fresh by every wall sweep -- the drawn walls here, the
+// auto walls in the Worker via tunables.
+const ifaceMode = () => ({ flat: 'flat', all: 'all' })[el('iface').value] ?? false;
 el('iface').addEventListener('change', () => {
-  PROP.iface = el('iface').checked;
+  PROP.iface = ifaceMode();
   refreshFins();
 });
 
@@ -312,6 +314,6 @@ export function initSettings() {
   syncPadStyle();
   syncSway();
   CUT.pattern = el('cutout').value;   // a reload can keep the browser's last pick
-  PROP.iface = el('iface').checked;
+  PROP.iface = ifaceMode();
   applyMaterial(el('material').value);   // sync density + tunables to the initial choice
 }
