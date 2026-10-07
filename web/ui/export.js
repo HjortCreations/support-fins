@@ -56,8 +56,9 @@ const FORMATS = {
   // a tine only touches the part (GitHub #38, the grip coupon's split print). The
   // site offers only this form: the old one-object assembly kept the pair from being
   // arranged apart, too small a gain for tines that fuse.
-  // With Interface material on, the walls' tops and the tines go in a third object
-  // to set to the second filament (prop/crest.js); off, there are none to split.
+  // With Interface material on, the walls' tops and the tines go in a second part of
+  // the supports object, to set to the second filament (prop/crest.js); off, there
+  // are none to split.
   'export-3mf': (g) => {
     const { body, iface } = splitInterface(g.finTris);
     return [writeThreeMF(g.partTris, body, g.base, { separate: true, iface }), `${g.base}-fins.3mf`];
