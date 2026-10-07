@@ -63,7 +63,7 @@ export const FILL = {
   maxStep: 2.5,      // mm: a line's top may climb or drop this much between stations
   redNear: 1.5,      // mm: a station this close to leftover red counts toward its stretch
   maxWalls: 40,
-  maxTries: 120,     // drawnWall calls, kept or not
+  maxTries: 120,     // walls swept (drawnWall's `builds`), kept or not
   groupTries: 12,     // drawnWall calls one group gets before its red is given up on
   maxChecks: 2000,   // line checks (underStretch, then settledStretch; both gridded), built or not
 };
@@ -491,8 +491,9 @@ export function fillCoverage(topo, result, rot, opts, built) {
         // a group whose lines keep passing the checks but won't build (part under it,
         // no headroom) stops here: each drawnWall is ~0.2 s on a 250k-face part
         if (builds++ >= FILL.groupTries) return aims;
-        stats.tries++;
         const r = drawnWall(c.a, c.b, tris, 0, drawOpts);
+        stats.tries += r.builds ?? 1;        // a too-slender wall is swept again, longer
+        builds += (r.builds ?? 1) - 1;
         const why = !r.ok ? r.reason.split(' — ')[0].split(' -- ')[0] : others.hits(r.tris, PROP.sideClear, local) ? 'touches a support' : null;
         if (why) {
           stats.refused[why] = (stats.refused[why] ?? 0) + 1;

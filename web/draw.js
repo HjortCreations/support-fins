@@ -187,24 +187,27 @@ export function drawnLine(a, b, tris, step = PROP.stationStep, band = Infinity, 
  * times); if the longer line doesn't build, or still comes out too slender, the wall is
  * refused with the reason. `opts.maxAspect` overrides both caps (the calibration
  * coupons build past them on purpose). Returns what `drawnWallAt` returns, plus
- * `stretched` (mm added) when the line was lengthened.
+ * `builds` (walls swept to get there; the fill pass budgets them) and `stretched` (mm
+ * added) when the line was lengthened.
  */
 export function drawnWall(a, b, tris, zBed = 0, opts = {}) {
+  let builds = 1;
   const first = drawnWallAt(a, b, tris, zBed, opts);
-  if (!first.ok) return first;
+  if (!first.ok) return { ...first, builds };
   const capOf = (r) => opts.maxAspect ?? (r.partAttached ? PROP.maxPartAspect : PROP.maxShortAspect);
   const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
   let r = first;
   for (let k = 0; k < 3; k++) {
     const need = r.height / capOf(r);
-    if (r.length >= need - 1e-6) return r === first ? r : { ...r, stretched: r.length - first.length };
+    if (r.length >= need - 1e-6) return r === first ? { ...r, builds } : { ...r, builds, stretched: r.length - first.length };
     const s = (need + 0.05) / first.length;   // a hair over, so float noise can't land under
     const at = (p) => p.map((v, i) => mid[i] + (v - mid[i]) * s);
+    builds++;
     r = drawnWallAt(at(a), at(b), tris, zBed, opts);
     if (!r.ok) break;
   }
   const need = first.height / capOf(first);
-  return { ok: false, reason: `too slender — a ${first.length.toFixed(1)}mm wall ${first.height.toFixed(0)}mm `
+  return { ok: false, builds, reason: `too slender — a ${first.length.toFixed(1)}mm wall ${first.height.toFixed(0)}mm `
     + `tall would tip over, and a ${need.toFixed(1)}mm one doesn’t fit there; draw it longer or rotate the part` };
 }
 
