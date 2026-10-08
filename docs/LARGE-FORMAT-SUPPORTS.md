@@ -1,0 +1,125 @@
+# Nozzle profiles and reinforcement for tall prints
+
+These controls prioritize thicker support walls and stability for large prints.
+They run in the browser and export with the fins, so you can adjust supports after
+choosing a print orientation without returning to CAD.
+
+The geometry is covered by automated tests and browser checks, including a
+1,000 mm post. The new nozzle profiles, cross ribs and reinforced bases have **not
+been physically print-validated**. The older 249 mm ASA sway-brace tests in
+[FIN-SPEC.md](FIN-SPEC.md) apply to the original dimensions only.
+
+## Choose wall thickness
+
+1. Import and orient the part, then choose Auto, Full coverage or Draw.
+2. Under **Walls**, enter the nozzle diameter in millimetres (0.2–3 mm).
+3. Move **Fin thickness** to 2, 4, 6 or 8 lines. The displayed thickness is
+   `nozzle × 1.1 × line count`.
+4. Match the slicer's line width to `nozzle × 1.1` and set **Layer height** to the
+   layer height you will slice at. Layer height accepts 0.08–2.4 mm; the field's
+   range is not a recommendation for every nozzle.
+
+For a 1.6 mm nozzle, line width is 1.76 mm:
+
+| Lines | Fin wall thickness |
+|---|---|
+| 2 | 3.52 mm |
+| 4 | 7.04 mm |
+| 6 | 10.56 mm |
+| 8 | 14.08 mm |
+
+The profile applies to ordinary walls, wedges and sway ribs in Auto, Full coverage
+and committed Draw supports. Their contact tips and grip tines stay one line wide;
+tines stay one layer high. Selecting a thicker wall does not scale the material's
+support gap. Foot plates have rounded ends inside their previous clearance envelope.
+
+**Browser defaults:** 0.4 mm nozzle, two lines (0.88 mm walls), rounded feet,
+Taper base, 1× base thickness, 0 mm base spread, sway off and solid walls.
+These intentionally differ from the older browser's wall and foot geometry.
+Slicer/CAD plugin dialogs do not expose these new controls yet and retain the
+original dimensions. Direct engine callers that omit a nozzle profile also
+retain those dimensions.
+
+## Widen the base in two independent ways
+
+With **Base shape → Taper**:
+
+- **Base thickness** sets plate-level thickness to 1–4 times the selected wall
+  thickness, in steps of 0.25. For example, a 7.04 mm wall at 2× becomes 14.08 mm
+  thick at the plate.
+- **Base spread** extends each end along the original fin plane by 0–300 mm.
+  This is separate from the thickness multiplier.
+
+The added solid tapers back to the original wall over its lower 20% of height,
+shortened when a contact begins lower. It follows the actual wall section at that
+height, including sway ribs that already narrow. At 1× and 0 mm no reinforcement
+is added. Rounded bases use inscribed corner arcs, not a fillet into the plate.
+
+## Add a cross almost all the way to the top
+
+Choose **Base shape → Cross** to add a perpendicular rib. Its arms narrow upward
+and remain visible until 0.5 mm below the highest full-width wall station. It leaves
+the original thin breakaway neck and contact geometry intact.
+
+- **Cross reach** sets reach beyond each side of the original wall at the plate:
+  5–80 mm per arm, default 20 mm. Reach is independent of fin height and length,
+  so a metre-high support does not automatically grow an enormous cross.
+- **Base thickness** sets the cross rib's plate-level thickness. Extra thickness
+  on the original fin still tapers over its lower 20%.
+- **Base spread** is hidden and ignored in Cross mode. Its value is retained for
+  switching back to Taper.
+
+The cross follows the original wall's centre as it narrows and has a rounded foot
+of its own. Low contact tails do not shorten the whole cross. If the body is too
+short, curved or unsuitable, no detached rib is created.
+
+![A generated metre-high post with cross ribs extending almost to its top](images/large-format-cross.jpg)
+
+Browser example using a generated 160 × 120 × 1,000 mm post: 1.6 mm nozzle,
+four lines (7.04 mm walls), 0.6 mm layers, sway braces at 15% depth, Cross shape,
+2× base thickness and 20 mm Cross reach. This is a geometry preview, not a print result.
+
+## Brace upright sides
+
+Enable **Sway braces (tall parts)** to tie upright faces to a rib using tines along
+their height. Auto picks suitable sides; in Draw, click an upright face to place a
+brace. **Brace depth** is a percentage of height and is separate from Cross reach.
+
+With a nozzle profile, sway ribs use the selected wall thickness and the complete
+Brace depth percentage. The original 2.4 mm thickness and 60 mm depth caps are
+not applied. A 1,000 mm rib at 15% therefore reaches about 150 mm from the face
+at the plate. The existing taper toward a 4 mm top remains.
+
+## Check and export
+
+The added reinforcement is checked against the part and neighbouring supports.
+Blocked cross arms are tried at shorter reaches or omitted; blocked Taper ends
+can remain unextended. The readout reports partial and skipped reinforcement.
+Part-mounted supports are not reinforced from the plate. Reinforcement belongs to
+its original support, so selecting, removing, undoing and exporting a fin includes
+its added base or cross.
+
+Export STL or 3MF and inspect the sliced result, especially the first layers,
+contact tines, wall continuity and breakaway gaps. Like the existing feet, the
+reinforcement uses closed solids that overlap their own wall; the slicer must union
+them. The on-screen mass estimate counts these overlaps before union, so use the
+slicer's estimate for material planning. The new reinforcement does not cut away
+an existing collision in the original support geometry.
+
+The app still uses CPU mesh calculations in a background worker. These controls
+do not add GPU computing, multiple generation workers or a native desktop wrapper.
+Complex meshes and collision checks can take time. Base fillets and physical
+validation across large printers remain future work.
+
+## Regression coverage
+
+Run `deno test -A` from the repository root, matching GitHub CI. The profile,
+base-reinforcement and cross-base tests cover measured thickness, closed and
+outward-wound geometry, obstacles, tall/sloping fins, original contacts, owned
+triangle ranges and STL/3MF round trips. The golden suite preserves the old engine
+references and adds browser-default references for Auto, Draw, PETG and sway.
+
+The profile concept builds on
+[oliveiracelso's Dowell profile](https://github.com/oliveiracelso/support-fins/blob/main/web/print-profile.js).
+Windows test paths and the explicit OCCT test loader are adapted from
+[MiSTRFiNGA's fork](https://github.com/MiSTRFiNGA/support-fins/commit/9dd02d69169f5a1ba54c1e53334a86a65e1cf7bf).

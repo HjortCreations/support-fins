@@ -7,6 +7,14 @@
  */
 
 export const FIN = {
+  // null keeps legacy engine/plugin defaults until a nozzle profile is chosen.
+  nozzle: null,
+  wallLines: 2,
+  baseThickness: 1,
+  baseSpread: 0,
+  baseStyle: 'taper',
+  crossReach: 20,
+  roundFeet: false,
   // --- from docs/FIN-SPEC.md, stated on camera. Do not "tune" these. ---
   tineH: 0.2,         // = slicer layer height: a tine must be ONE layer so it prints
                       // as a single continuous bead (see prop/config.js tineH / FIN-SPEC)

@@ -1,0 +1,77 @@
+{
+  "scene": {
+    "name": "profile-cube-x40-auto",
+    "model": "cube",
+    "rot": [
+      40,
+      0,
+      0
+    ],
+    "set": {
+      "profile": {
+        "nozzle": 0.4,
+        "wallLines": 2,
+        "baseStyle": "taper",
+        "baseThickness": 1,
+        "baseSpread": 0,
+        "crossReach": 20
+      }
+    }
+  },
+  "walls": 3,
+  "tines": 18,
+  "unserved": 0,
+  "triangles": 1956,
+  "padTriangles": 28302,
+  "fins": [
+    {
+      "kind": "prop",
+      "height": 25.512,
+      "length": 29.665,
+      "tines": 0,
+      "from": [
+        13.333,
+        -1.488,
+        0.62
+      ],
+      "to": [
+        13.333,
+        28.177,
+        25.512
+      ]
+    },
+    {
+      "kind": "prop",
+      "height": 25.512,
+      "length": 29.665,
+      "tines": 0,
+      "from": [
+        0,
+        -1.488,
+        0.62
+      ],
+      "to": [
+        0,
+        28.177,
+        25.512
+      ]
+    },
+    {
+      "kind": "prop",
+      "height": 25.512,
+      "length": 29.665,
+      "tines": 0,
+      "from": [
+        -13.333,
+        -1.488,
+        0.62
+      ],
+      "to": [
+        -13.333,
+        28.177,
+        25.512
+      ]
+    }
+  ],
+  "sha256": "4b08ead2abb480e055eba8d81bba9325640ef55e5b33b772904fc7487f342cce"
+}

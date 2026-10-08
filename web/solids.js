@@ -4,6 +4,57 @@
  * and pushes outward-wound triangles, as vertex triples, onto `out`.
  */
 
+/** Inscribed corner arcs of a convex CCW polygon; radii may be per corner. */
+export function roundedPolygon(poly, radius, steps = 8) {
+  const out = [];
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i], a = poly[(i + poly.length - 1) % poly.length], b = poly[(i + 1) % poly.length];
+    const da = Math.hypot(a[0] - p[0], a[1] - p[1]), db = Math.hypot(b[0] - p[0], b[1] - p[1]);
+    const r = Array.isArray(radius) ? radius[i] : radius;
+    if (!(r > 0) || da < 1e-7 || db < 1e-7) { out.push([...p]); continue; }
+    const u = [(a[0] - p[0]) / da, (a[1] - p[1]) / da], v = [(b[0] - p[0]) / db, (b[1] - p[1]) / db];
+    const theta = Math.acos(Math.max(-1, Math.min(1, u[0] * v[0] + u[1] * v[1])));
+    if (theta < 1e-6 || Math.PI - theta < 1e-6) { out.push([...p]); continue; }
+    const d = Math.min(r / Math.tan(theta / 2), da * 0.49, db * 0.49);
+    const rr = d * Math.tan(theta / 2), bis = Math.hypot(u[0] + v[0], u[1] + v[1]);
+    const c = [p[0] + (u[0] + v[0]) / bis * rr / Math.sin(theta / 2),
+      p[1] + (u[1] + v[1]) / bis * rr / Math.sin(theta / 2)];
+    const start = Math.atan2(p[1] + u[1] * d - c[1], p[0] + u[0] * d - c[0]);
+    const turn = Math.PI - theta;
+    for (let j = 0; j <= steps; j++) {
+      const ang = start + turn * j / steps;
+      const q = [c[0] + rr * Math.cos(ang), c[1] + rr * Math.sin(ang)];
+      if (!out.length || Math.hypot(q[0] - out.at(-1)[0], q[1] - out.at(-1)[1]) > 1e-8) out.push(q);
+    }
+  }
+  return out;
+}
+
+/** Round only the ends of a swept flange, keeping the intervening contour. */
+export function roundedFlange(sections, out) {
+  const secs = [];
+  for (const sec of sections) {
+    secs.push(sec);
+    while (secs.length > 2) {
+      const [a, b, c] = secs.slice(-3);
+      const d = c[0].map((v, k) => v - a[0][k]), len2 = d.reduce((s, v) => s + v * v, 0);
+      const t = len2 ? d.reduce((s, v, k) => s + v * (b[0][k] - a[0][k]), 0) / len2 : -1;
+      if (t <= 0 || t >= 1 || !b.every((p, j) => p.every((v, k) => Math.abs(v - (a[j][k] + t * (c[j][k] - a[j][k]))) < 1e-6))) break;
+      secs.splice(secs.length - 2, 1);
+    }
+  }
+  for (let i = 0; i < secs.length - 1; i++) {
+    const a = secs[i], b = secs[i + 1];
+    const w = Math.min(Math.hypot(a[0][0] - a[3][0], a[0][1] - a[3][1]),
+      Math.hypot(b[0][0] - b[3][0], b[0][1] - b[3][1])) / 2;
+    const poly = [a[0], b[0], b[3], a[3]].map((p) => p.slice(0, 2));
+    const radii = [i === 0 ? w : 0, i === secs.length - 2 ? w : 0,
+      i === secs.length - 2 ? w : 0, i === 0 ? w : 0];
+    boxExtrude(roundedPolygon(poly, radii), a[0][2], Math.min(a[1][2], b[1][2]),
+      (x, y, z) => [x, y, z], out);
+  }
+}
+
 /**
  * Bridge a run of cross-sections into one closed solid and push its triangles.
  * Each section is a ring of `k` vertices in the same order; consecutive rings

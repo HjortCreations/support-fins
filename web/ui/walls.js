@@ -7,6 +7,9 @@
 import * as THREE from 'three';
 import { drawnWall } from '../draw.js';
 import { swayAtFace, faceIsUpright } from '../sway.js';
+import { FIN } from '../fins.js';
+import { PROP } from '../prop.js';
+import { baseObstacle, reinforceBuiltBases } from '../base-reinforcement.js';
 import { el } from './dom.js';
 import { viewport, renderer, scene, camera, meshFrom, raycaster, pointer } from './scene.js';
 import { removedIds } from './remove.js';
@@ -15,7 +18,7 @@ import { updateReadout } from './readout.js';
 import { pickFace } from './pose.js';
 import { part, topology, rotM3, lastResult, updateFit } from './part.js';
 import { finsVisible, finMode, autoLike, drawAugment } from './settings.js';
-import { lastBuilt, swayOpts } from './finbuild.js';
+import { lastBuilt, swayOpts, finTris } from './finbuild.js';
 
 // ---- draw mode: the user places breakaway walls by hand --------------------
 // A drawn wall IS the same kind of support the auto-placer emits, so it shares
@@ -167,6 +170,22 @@ export function rebuildDrawn() {
     if (r.ok) for (const t of r.tris) drawnTris.push(t);
     w.triEnd = drawnTris.length / 3;
   }
+  // Build all original walls first, so each reinforcement sees even later neighbours.
+  const ok = drawnWalls.filter((w) => w.ok);
+  const records = ok.map((w) => ({ line: w.info.foot ?? w.info.top,
+    height: w.info.height, wallThickness: w.info.th, triRanges: [[w.triStart * 3, w.triEnd * 3]] }));
+  const built = { triangles: drawnTris, fins: records };
+  const external = autoLike() && finTris.length ? [baseObstacle(finTris)] : [];
+  reinforceBuiltBases(built, topology, lastResult, rotM3.elements, FIN, PROP.th,
+    Math.max(0.01, Math.min(PROP.gap, PROP.sideClear) * 0.95), external);
+  const merged = [];
+  ok.forEach((w, i) => {
+    w.info.baseReinforcement = records[i].baseReinforcement;
+    w.triStart = merged.length / 3;
+    for (const [a, b] of records[i].triRanges) for (let j = a; j < b; j++) merged.push(built.triangles[j]);
+    w.triEnd = merged.length / 3;
+  });
+  drawnTris = merged;
   drawnMesh = meshFrom(drawnTris, drawMaterial);
   syncSelection();
 }

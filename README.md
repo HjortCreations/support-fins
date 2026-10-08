@@ -47,7 +47,60 @@ load-direction scoring, the combined fin (wall + tines that fuse into the part �
 point; see `docs/FIN-SPEC.md`), optional sway braces that tie tall parts' sides on all
 the way up (auto, or click an upright side in Draw), STL, 3MF and STEP import, STL and 3MF export.
 
-Still open: scale-aware fin profiles, and the bed pad on tilted exports.
+Still open: physical validation of large-format profiles, and the bed pad on tilted exports.
+
+### Nozzle profiles and base reinforcement
+
+Under **Walls**, set **Nozzle** and use **Fin thickness**
+to choose 2, 4, 6 or 8 lines. Wall thickness is `nozzle × 1.1 × line count`, shown
+in millimetres. For example, a 1.6 mm nozzle gives 3.52 / 7.04 / 10.56 / 14.08 mm.
+The same dimensions reach Auto, Full coverage, Draw and sway braces, including
+the background worker and export. Contact tips and grip tines remain one line
+wide (`nozzle × 1.1`); match that line width and the layer-height field in your
+slicer. The layer-height field accepts up to 2.4 mm for larger nozzles.
+
+With a nozzle profile selected, sway ribs use the chosen wall thickness and the
+full **Brace depth** percentage, without the old 2.4 mm / 60 mm caps. Their
+existing taper in depth stays in place. Feet stay wider than the wall. Solid walls are the
+default; cutouts remain optional. These dimensions are tested as geometry,
+including a 1,000 mm post, and need physical print validation on your machine.
+The browser starts with a 0.4 mm nozzle and two lines: a 0.88 mm wall with
+rounded feet. This deliberately changes the browser's previous default output;
+the plugin entry points and engine callers without a nozzle profile keep their
+original dimensions. See the [large-format guide](docs/LARGE-FORMAT-SUPPORTS.md)
+for controls, examples and limitations.
+
+The nozzle profile draws on the large-format [Dowell profile in
+oliveiracelso's fork](https://github.com/oliveiracelso/support-fins/blob/main/web/print-profile.js).
+Windows test-path and OCCT loading fixes are adapted from
+[MiSTRFiNGA's fork](https://github.com/MiSTRFiNGA/support-fins/commit/9dd02d69169f5a1ba54c1e53334a86a65e1cf7bf).
+
+**Base reinforcement:** **Base thickness** multiplies the selected wall
+thickness by 1–4 at the plate; **Base spread** independently extends the base
+0–300 mm per end along the fin plane. Both return to the original outline with a
+straight taper over the lower 20% of support height, shortened when a contact
+starts lower. Defaults (1× and 0 mm) leave the original geometry unchanged.
+Auto, Full coverage and committed Draw supports use the same checks and export
+their reinforcement with the original fin. Blocked ends can remain unextended;
+the status reports partial and skipped bases. Supports mounted on the part and
+curved bases are left unchanged. Existing feet and breakaway contacts are kept.
+This adds closed overlapping solids, as the existing feet do; inspect the union
+in your slicer. Fillets and multi-worker CPU generation are not implemented.
+
+**Cross bases and rounded feet:** choose **Base shape → Cross** for a perpendicular
+rib crossing the original fin at its base. The additional rib narrows toward a section
+0.5 mm below the highest full-width wall station, preserving any breakaway neck.
+Its top retains small visible arms outside the original wall, and follows that
+wall's centre as it tapers. Low contact tails do not cap the entire cross.
+**Cross reach** controls arm reach beyond the original wall, 5–80 mm per side
+(default 20 mm), independently of fin height or length. Cross does not apply
+the longitudinal **Base spread**, which remains available in Taper mode.
+**Base thickness** controls its thickness at the plate. Blocked
+arms are shortened or omitted, with status feedback. Original breakaway contacts
+are preserved. With a nozzle profile, normal, squat and sway foot plates and
+wedge feet now have inscribed rounded ends; reinforced taper bases are rounded
+too. Round feet stay within the original clearance envelope. The cross rib gets
+its own rounded foot, checked with the new geometry against the part and neighbours.
 
 ### Sway braces for tall parts
 
@@ -57,8 +110,9 @@ around. The part drifts, sags or wobbles, and every movement shows up as a layer
 Sway braces stop that by tying the part's upright sides to a stiff support all the way up.
 
 **What a sway brace is:** a vertical rib standing **edge-on** to an upright side (its stiff
-direction). It's deep at the bed and tapers to a 4 mm flat top, gets thicker as it gets
-taller, and sits on a thin foot on the plate. One-layer horizontal tines, spaced **evenly
+direction). It's deep at the bed and tapers to a 4 mm flat top, uses the selected
+nozzle's wall thickness (or the original height-based thickness without a profile),
+and sits on a thin foot on the plate. One-layer horizontal tines, spaced **evenly
 up the full height**, tie it to the part. Like every support here, it stands off by the
 breakaway gap and snaps off; only the tines touch the part.
 
@@ -80,10 +134,11 @@ and spread out going up, leaving the top of a tall part, where the sway is, near
 untied. Every number and the reasoning behind it is in `docs/FIN-SPEC.md` ("Sway
 braces"); the code is `web/sway.js`, and `tests/sway.test.js` pins its behaviour.
 
-**Status: printed.** Developed on a 249 mm fence-post cap, where Auto places 4 braces
+**Legacy dimensions: printed.** Developed on a 249 mm fence-post cap, where Auto places 4 braces
 (about 20 g of support) and hand-placed braces follow its gable up to 225 mm. Two test
 prints (2026-09-22) both came out clean, so the defaults below — depth, thickness and
-tine spacing — are the printed ones, not estimates.
+tine spacing — are the printed ones, not estimates. Those prints predate nozzle
+profiles and base reinforcement; they do not validate the new large-format geometry.
 
 ### The "no config, geometry only" notice
 
@@ -143,7 +198,7 @@ python3 prototype/spike_arrow.py yourpart.stl 0,0,-1   # load-direction scoring
 Tests (Deno for the JS engine):
 
 ```bash
-deno test --allow-read tests/
+deno test -A
 ```
 
 ## The PrusaSlicer plugin (hand-placed)

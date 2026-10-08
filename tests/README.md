@@ -5,21 +5,25 @@ geometry in, triangle soup out -- so every test builds something and asserts a
 property no future change may quietly break.
 
 ```sh
-deno test --allow-read tests/
+deno test -A
 ```
 
 ## What's pinned (and why it exists)
 
-Each of these is a regression that actually shipped once. The tests are the
-fence around it.
+The suite covers shipped regressions and new feature invariants. The root-level
+command above also runs the shared plugin and CLI tests, matching GitHub CI.
 
-**`golden.test.js`** -- the exact supports the site builds, at its default settings,
+**`golden.test.js`** -- exact support geometry at legacy engine settings,
 for a few reference scenes (Matthew's site check: `cube.stl` at X40, Auto and Draw;
 PETG; lbracket, sphere, torus, staircase; sway on a bar). Every test below pins a
 property or a count; a change that keeps every count (PR #149's wall steps, on the
 default cube) passes them all. This one hashes the geometry, so **any** change fails
 and names the scene. A change you mean: re-record and commit `tests/golden/` with the
-PR, saying why in its body -- the golden diff is how review sees the default moved:
+PR, saying why in its body -- the golden diff is how review sees the default moved.
+The original reference files remain unchanged for callers without a nozzle
+profile. Four `profile-*.json` references cover the browser's new default profile
+(0.4 mm nozzle, two lines, rounded feet) in Auto, Draw, PETG and sway builds.
+Those scenes read the nozzle and numeric base defaults from `web/index.html`:
 
 ```sh
 UPDATE_GOLDEN=1 deno test -A tests/golden.test.js
@@ -183,6 +187,25 @@ no stress models needed):
 - a short part gets none **and says why**; Draw's one-click brace works on a side and
   refuses a roof; `buildFins` without the option is unchanged;
 - a brace straight across a channel from another is **refused**, a staggered one is not.
+
+**`print_profile.test.js`** -- nozzle-scaled dimensions across 0.4 / 0.8 / 1.6 /
+2.4 mm nozzles and all four line counts; contacts remain one line wide; invalid
+profiles cannot mutate settings; a 1,000 mm post uses uncapped sway depth; Auto,
+Full coverage and Draw share the profile; STL and 3MF retain the support geometry.
+
+**`base_reinforcement.test.js`** -- independent thickness and longitudinal spread;
+closed and outward geometry; limited ends, enclosed model/neighbor detection;
+part-mounted, curved and disconnected bases skipped; original contacts and
+owned triangle ranges preserved; a metre-high sway taper meets its actual body.
+
+**`cross_base.test.js`** -- rounded feet inside their original envelope;
+perpendicular ribs with modest independent reach; arms remain visible almost to
+the full-width body's top; low contact tails cannot truncate a tall rib; obstacles
+near the top are checked; original contacts, ownership and STL/3MF output survive.
+
+These tests verify geometry, not strength or removability on a physical printer.
+The test helpers use file URLs and native filesystem paths so Windows checkouts
+in directories containing spaces run the same offline suite as Linux CI.
 
 See `docs/FIN-SPEC.md` for the spec these encode. `prototype/stress/run.js` is the
 broader sweep (all models × poses) for eyeballing; this suite is the pass/fail gate.

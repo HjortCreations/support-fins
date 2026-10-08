@@ -3,7 +3,7 @@
  * tines, sway braces, gap, cutouts, material profile, and the collapsible
  * sections with their one-line recaps. Owns finsVisible / finMode / drawAugment.
  */
-import { FIN, PAD } from '../fins.js';
+import { FIN, PAD, applyTunables } from '../fins.js';
 import { PROP } from '../prop.js';
 import { CUT } from '../cutout.js';
 import { MATERIAL } from '../materials.js';
@@ -14,6 +14,7 @@ import { setDrawMsg, clearPreview, syncDrawControls } from './walls.js';
 import { lastBuilt, refreshFins } from './finbuild.js';
 import { setGizmo } from './pose.js';
 import { paintOverhangs } from './part.js';
+import { printDimensions } from '../print-profile.js';
 
 export let finsVisible = false;
 export function setFinsVisible(v) { finsVisible = v; }
@@ -120,6 +121,30 @@ let refreshTimer = null;
 function debouncedRefresh(ms = 180) {
   clearTimeout(refreshTimer);
   refreshTimer = setTimeout(() => { refreshTimer = null; refreshFins(); }, ms);
+}
+function syncPrintProfile() {
+  const p = printDimensions(el('nozzle').valueAsNumber, el('wall-lines').valueAsNumber);
+  if (!p) return;
+  applyTunables({ nozzle: p.nozzle, wallLines: p.wallLines });
+  el('wall-lines-value').textContent = `${p.wallLines} lines`;
+  el('wall-thickness').textContent = `${+p.wallThickness.toFixed(3)} mm`;
+  syncBaseSettings();
+  syncSectionSums();
+}
+function syncBaseSettings() {
+  applyTunables({ baseStyle: el('base-style').value, baseThickness: el('base-thickness').valueAsNumber, baseSpread: el('base-spread').valueAsNumber });
+  applyTunables({ crossReach: el('cross-reach').valueAsNumber });
+  el('base-spread-fld').hidden = FIN.baseStyle === 'cross';
+  el('cross-reach-fld').hidden = FIN.baseStyle !== 'cross';
+  el('cross-reach-value').textContent = `${FIN.crossReach} mm / arm`;
+  el('base-thickness-value').textContent = `${FIN.baseThickness}× · ${+(PROP.th * FIN.baseThickness).toFixed(3)} mm`;
+  el('base-spread-value').textContent = `${FIN.baseSpread} mm / end`;
+}
+for (const id of ['base-style', 'base-thickness', 'base-spread', 'cross-reach']) {
+  el(id).addEventListener('input', () => { syncBaseSettings(); debouncedRefresh(); });
+}
+for (const id of ['nozzle', 'wall-lines']) {
+  el(id).addEventListener('input', () => { syncPrintProfile(); debouncedRefresh(); });
 }
 // Tine grip only means anything when the tines are on, so hide its slider with the
 // toggle (keeps the panel honest -- no dead control).
@@ -261,7 +286,8 @@ export function syncSectionSums() {
   el('sum-clearances').textContent =
     `${el('gap').value} mm gap · pad ${el('bed-pad').selectedOptions[0].textContent.toLowerCase()}`;
   const cut = el('cutout').value;
-  el('sum-walls').textContent = cut === 'none' ? 'solid' : `${sel('cutout').toLowerCase()} cutouts`;
+  el('sum-walls').textContent = `${+PROP.th.toFixed(3)} mm · `
+    + (cut === 'none' ? 'solid' : `${sel('cutout').toLowerCase()} cutouts`);
   el('sum-sway').textContent = el('sway').checked
     ? `${el('sway-spacing').value} mm tines · ${el('sway-depth').value}% deep`
       + (el('sway-from').valueAsNumber > 0 ? ` · from ${el('sway-from').value} mm` : '')
@@ -300,6 +326,7 @@ el('augment-toggle').addEventListener('click', () => {
 /** Bring the pad, tine, sway, cutout and material state in line with the controls
  *  (a reload can keep the browser's last values). Called once at startup. */
 export function initSettings() {
+  syncPrintProfile();
   syncTineGrip();
   syncPadStyle();
   syncSway();

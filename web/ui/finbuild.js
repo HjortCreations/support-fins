@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { buildFins, FIN, PAD } from '../fins.js';
 import { PROP } from '../prop.js';
 import { CUT } from '../cutout.js';
+import { printDimensions } from '../print-profile.js';
 import { el } from './dom.js';
 import { scene, meshFrom } from './scene.js';
 import {
@@ -104,6 +105,10 @@ function finOpts() {
            // applyMaterial and the gap fields set on this page's copy (fins.js
            // applyTunables). Without this, Auto mode always built PLA's numbers.
            tunables: { padH: FIN.padH,
+                       nozzle: FIN.nozzle, wallLines: FIN.wallLines,
+                       baseThickness: FIN.baseThickness, baseSpread: FIN.baseSpread,
+                       baseStyle: FIN.baseStyle,
+                       crossReach: FIN.crossReach,
                        padGrab: PAD.grab, padStyle: PAD.style, padCustom: { ...PAD.custom },
                        propGap: PROP.gap,
                        cutout: CUT.pattern } };
@@ -113,7 +118,8 @@ function finOpts() {
  *  material's number as an option instead of reading FIN/PROP itself. */
 export function swayOpts() {
   const num = (id, d) => (Number.isFinite(el(id).valueAsNumber) ? el(id).valueAsNumber : d);
-  return { gripFrom: num('sway-from', 0),
+  return { ...printDimensions(FIN.nozzle, FIN.wallLines),
+           gripFrom: num('sway-from', 0),
            tineSpacing: num('sway-spacing', 6),
            reach: num('sway-depth', 15) / 100,
            gap: PROP.gap,

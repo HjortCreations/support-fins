@@ -102,8 +102,8 @@ export const fmtGrams = (g) => (g < 9.95 ? g.toFixed(1) : String(Math.round(g)))
 
 /**
  * The "what did this actually get me" receipt. The headline -- the mass of
- * breakaway support the tool adds -- is EXACT (we generate that geometry, and
- * this volume was cross-checked against buildFins' own wall volume). It ticks as
+ * breakaway support the tool adds -- is estimated from the generated solids.
+ * Overlapping feet and reinforced bases are counted before slicer union. It ticks as
  * you re-orient, so a better pose visibly costs less support.
  *
  * The saving vs. the slicer's own supports is deliberately NOT computed per part:
@@ -116,7 +116,7 @@ function updateReceipt() {
   const added = activeAdded();
   if (!finsVisible || !added.length) { box.hidden = true; return; }
   const grams = meshVolumeMM3(added) * materialDensity / 1000;
-  el('r-grams').textContent = `${fmtGrams(grams)} g`;
+  el('r-grams').textContent = `≈ ${fmtGrams(grams)} g`;
   box.hidden = false;
 }
 
@@ -140,6 +140,26 @@ function setFinNote(lead, detail) {
   const text = detail.filter(Boolean).join(' ');
   if (text) { info.title = text; info.hidden = false; }
   else { info.title = ''; info.hidden = true; }
+}
+
+function baseNotes(built, lead, help) {
+  const r = {};
+  let crosses = 0;
+  for (const f of built?.fins ?? []) {
+    const status = f.baseReinforcement?.status;
+    if (status && status !== 'off' && !removedIds.has(f.id)) r[status] = (r[status] ?? 0) + 1;
+    if (f.baseReinforcement?.cross && !removedIds.has(f.id)) crosses++;
+  }
+  if (drawShown()) for (const w of drawnWalls.filter((w) => w.ok)) {
+    const status = w.info?.baseReinforcement?.status;
+    if (status && status !== 'off') r[status] = (r[status] ?? 0) + 1;
+    if (w.info?.baseReinforcement?.cross) crosses++;
+  }
+  const applied = (r.added ?? 0) + (r.partial ?? 0);
+  if (applied) help.push(`Tapered bases added to ${applied} supports. The original contacts remain unchanged.`);
+  if (crosses) help.push(`${crosses} supports have perpendicular cross ribs with rounded feet, tapering toward the top.`);
+  if (r.partial) lead.push(`${r.partial} base extensions limited by nearby geometry`);
+  if (r.skipped) lead.push(`${r.skipped} base reinforcements skipped: no clear space or suitable bed-connected base`);
 }
 
 /**
@@ -202,6 +222,7 @@ function updateDrawReadout(built, ms) {
       : 'this part balances on one point. Turn the bed pad on to seat it, or rotate until it sits down');
   }
   if (built && padNote(built)) lead.push(padNote(built));
+  baseNotes(null, lead, help);
   setFinNote(lead, help);
   if (ms != null) el('s-time').textContent = `${analysisTiming} · pad ${ms.toFixed(0)} ms`;
 }
@@ -394,6 +415,7 @@ function updateFinReadout(built, ms) {
       }
     }
   }
+  baseNotes(built, lead, help);
   setFinNote(lead, help);
   // ms is absent when a hand-drawn wall (Suggest + Draw mix) re-runs the readout
   // without rebuilding the auto fins -- don't touch the timing line then, and

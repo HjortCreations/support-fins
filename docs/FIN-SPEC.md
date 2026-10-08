@@ -1,8 +1,9 @@
 # Fin geometry spec
 
-Every number here is stated on camera by Slant3D in *How to Design Better Support Fins
+The original fin dimensions are stated on camera by Slant3D in *How to Design Better Support Fins
 for 3D Printing* (youtube.com/watch?v=vnn4XeKQobs). These are not our guesses. Where we
-deviate, this file says so and why.
+deviate, this file says so and why. Sway braces and the nozzle/reinforcement
+extensions below are separate design choices, with their own validation status.
 
 ## The shape
 
@@ -213,6 +214,52 @@ over 7 layers. The printed numbers above still stand.
 | clash | ≥ 1 mm of air from another brace (compared at matching heights) and from any prop wall or wedge (compared at the bed, where both are widest) | two supports fused into one piece no longer break away in pieces |
 | auto placement | up to 4 faces with bearings ≥ 60° apart, a rib per ~100 mm of face width, at the face's **tallest** columns | holds both axes; a rib at a gable's low end braces the half that wasn't moving |
 | manual | Draw mode: one click on an upright side; click a placed support to select it, Delete / "Remove selected" to take it out | |
+
+## Nozzle profiles and base reinforcement
+
+**Geometry-tested; not yet physically print-validated.** These additions address
+large nozzles and tall prints where the original thin walls are insufficient.
+They do not change the original constants above. The browser selects a profile
+at startup; plugin entry points and engine callers without a profile retain the
+original geometry. See [the user guide](LARGE-FORMAT-SUPPORTS.md).
+
+| feature | profile value | rationale and limits |
+|---|---|---|
+| wall thickness | nozzle diameter × 1.1 × 2/4/6/8 lines | explicit user choice; more material for a thicker support; not a measured strength guarantee |
+| contact tip / tine width | nozzle × 1.1 | one bead regardless of wall thickness; slicer line width must match |
+| tine height | selected layer height, 0.08–2.4 mm in the UI | remains one layer; match the slicer and choose an appropriate height for the nozzle |
+| sway dimensions | selected wall thickness; depth = Brace depth × height | bypasses the legacy 2.4 mm / 60 mm caps; depth still tapers toward a 4 mm top |
+| ordinary feet | inscribed rounded end corners | keeps the previous clearance envelope; includes prop, squat, wedge and sway feet |
+| Taper base thickness | 1–4× selected wall thickness at the plate | independent from longitudinal reach; default 1× |
+| Taper base spread | 0–300 mm per end in the fin plane | default 0; checked ends can be omitted individually |
+| Taper height | lower 20% of fin height, limited by the first positive contact height | returns to the actual body section at the seam; original contact triangles are retained |
+| Cross reach | 5–80 mm beyond each side of the original wall, default 20 mm | independent of height and length; Cross ignores Taper's Base spread |
+| Cross height | highest full-width wall station minus 0.5 mm | original breakaway neck is kept; low contact tails do not cap the cross |
+| Cross top | follows the original wall centre; full reach narrows to small visible arms | no floating top: samples at three heights must remain inside the original wall; very thin/sloping body sections can be skipped |
+| Cross foot | rounded slab, at most 0.6 mm high | emitted and checked together with the rib |
+| reinforcement clearance | 0.95 × min(support gap, side clearance), floor 0.01 mm | triangle-surface and containment checks against the part and other supports; this is a mesh clearance, not a new physically validated slicer gap |
+
+Reinforcement is restricted to straight, plate-connected supports. Collision
+checks can shorten or omit cross arms, omit Taper ends, fall back to thickness
+alone, or skip the addition. Original support generation keeps its existing
+clearance rules; added geometry does not repair pre-existing collisions. Rounded
+Taper containment checks conservatively use its outer rectangle.
+
+New solids overlap their own fin and are unioned by the slicer, as existing feet
+are. Added triangle ranges belong to the original fin record for selection,
+removal and export. Summed mesh volume counts overlaps before union, so displayed
+support mass is an estimate.
+
+`tests/print_profile.test.js`, `tests/base_reinforcement.test.js` and
+`tests/cross_base.test.js` cover the new dimensions, collision cases, preserved
+contacts, closed/outward geometry, metre-high supports and STL/3MF round trips.
+Existing golden files pin the legacy engine dimensions; `profile-*.json` goldens
+pin the browser's intentional new defaults: 0.4 mm nozzle, two lines (0.88 mm
+walls), rounded feet, 1× base thickness, zero spread and sway off.
+
+The profile is inspired by oliveiracelso's Dowell profile. The 1.1 multiplier and
+line-count choices follow this feature's requested sizing rule; cross reach,
+taper fractions and top clearance are design choices awaiting physical testing.
 
 ## Naming
 

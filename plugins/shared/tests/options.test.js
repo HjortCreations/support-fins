@@ -45,6 +45,12 @@ const SITE_EXCLUDED = {
   'fin-mode': 'plugins run Auto; Draw needs the site\'s canvas',
   'gap': 'hand-typed clearance; the material sets it',
   'pad-h': 'Custom pad', 'pad-gap': 'Custom pad', 'pad-grip': 'Custom pad', 'pad-margin': 'Custom pad',
+  // Large-format profiles are browser controls for now. Plugin entry points
+  // intentionally keep their existing, physically tested support dimensions.
+  'nozzle': 'browser nozzle profile; plugin dimensions remain unchanged',
+  'wall-lines': 'browser nozzle profile; plugin dimensions remain unchanged',
+  'base-style': 'browser base reinforcement', 'base-thickness': 'browser base reinforcement',
+  'base-spread': 'browser base reinforcement', 'cross-reach': 'browser base reinforcement',
 };
 
 Deno.test('options.json is well formed', () => {
