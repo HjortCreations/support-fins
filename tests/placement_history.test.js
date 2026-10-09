@@ -4,6 +4,7 @@ import { assert } from './_util.js';
 const state = (...keys) => ({ walls: keys.map((historyKey) => ({ historyKey })) });
 const reserve = (undo, redo) => {
   const before = state(), token = { state: before, redoBefore: [...redo] };
+  before.placementRedo = token.redoBefore;
   undo.push(before); redo.length = 0;
   return token;
 };
@@ -41,4 +42,13 @@ Deno.test('failed placement: a pending request in redo cannot resurrect rejected
   redo.push(later);
   retractPlacement(undo, redo, token, 'pending');
   assert(!undo.length && redo.length === 1 && redo[0].walls[0].historyKey === 'accepted');
+});
+
+Deno.test('failed placement: all consecutive rejected requests restore prior redo, in either order', () => {
+  for (const order of [[0, 1], [1, 0]]) {
+    const previous = state('old-redo'), undo = [], redo = [previous];
+    const tokens = [reserve(undo, redo), reserve(undo, redo)];
+    for (const i of order) retractPlacement(undo, redo, tokens[i], `failed-${i}`);
+    assert(!undo.length && redo.length === 1 && redo[0] === previous, 'lost prior redo');
+  }
 });
