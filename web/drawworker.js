@@ -27,14 +27,14 @@ self.onmessage = async ({ data }) => {
     }
     const t0 = performance.now();
     applyTunables(job.options.tunables);
-    const serial = () => buildDrawn(topology, job.result, job.rot, job.requests, job.options, job.avoid, partTris);
+    const serial = () => buildDrawn(topology, job.result, job.rot, job.requests, job.options, job.avoid, partTris, null, job.external ?? []);
     let built, workers = 1, fallback;
     if (job.kind === 'preview') built = drawnWall(job.a, job.b, partTris, 0);
     else {
       const reply = await pool.build(job, serial);
       workers = reply.workers; fallback = reply.fallback;
       built = reply.built ?? buildDrawn(topology, job.result, job.rot, job.requests,
-        job.options, job.avoid, partTris, reply.candidates);
+        job.options, job.avoid, partTris, reply.candidates, job.external ?? []);
     }
     self.postMessage({ id, built, workers, fallback, computeMs: performance.now() - t0 });
   } catch (err) { self.postMessage({ id, error: String(err?.stack ?? err) }); }

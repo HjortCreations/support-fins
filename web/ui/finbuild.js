@@ -102,7 +102,7 @@ export function finOpts() {
            // Worker with its own copy of fins.js / prop.js, which never sees what
            // applyMaterial and the gap fields set on this page's copy (fins.js
            // applyTunables). Without this, Auto mode always built PLA's numbers.
-           tunables: { roundFeet: FIN.roundFeet, nozzle: FIN.nozzle, wallLines: FIN.wallLines, padH: FIN.padH,
+           tunables: { baseThickness: FIN.baseThickness, baseSpread: FIN.baseSpread, roundFeet: FIN.roundFeet, nozzle: FIN.nozzle, wallLines: FIN.wallLines, padH: FIN.padH,
                        padGrab: PAD.grab, padStyle: PAD.style, padCustom: { ...PAD.custom },
                        propGap: PROP.gap,
                        cutout: CUT.pattern } };

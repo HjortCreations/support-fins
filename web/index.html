@@ -374,6 +374,14 @@
     <label class="fld check" title="Round the support foot ends inside their existing clearance envelope. Switch off for the original straight-edged feet.">
       <input type="checkbox" id="rounded-feet" checked><span>Rounded feet</span>
     </label>
+    <label class="fld" title="Thicken the bottom of bed-connected fins, returning to their actual wall gauge over the lower 20% of height.">
+      <span>Base thickness <output id="base-thickness-value" class="mut" for="base-thickness">1× · 0.88 mm</output></span>
+      <input type="range" id="base-thickness" aria-label="Base thickness multiplier" min="1" max="4" step="0.25" value="1">
+    </label>
+    <label class="fld" id="base-spread-fld" title="Extra reach per end of a tapered base at the plate. Blocked ends are omitted, with a status message. Foot plates have rounded ends.">
+      <span>Base spread <output id="base-spread-value" class="mut" for="base-spread">0 mm / end</output></span>
+      <input type="range" id="base-spread" aria-label="Base spread in millimeters per end" min="0" max="300" step="5" value="0">
+    </label>
     <!-- Cutouts (issue #34): holes through the middle of each breakaway wall to
          save filament. Every hole has a pointed roof (>=45deg) so nothing bridges;
          the contact top, foot and ends stay solid, and a wall too short for a hole

@@ -17,7 +17,7 @@ import { updateReadout } from './readout.js';
 import { pickFace } from './pose.js';
 import { part, topology, rotM3, lastResult, updateFit } from './part.js';
 import { finsVisible, finMode, autoLike, drawAugment } from './settings.js';
-import { lastBuilt, swayOpts, finOpts } from './finbuild.js';
+import { lastBuilt, swayOpts, finOpts, finTris } from './finbuild.js';
 
 // ---- draw mode: the user places breakaway walls by hand --------------------
 // A drawn wall IS the same kind of support the auto-placer emits, so it shares
@@ -138,7 +138,7 @@ export function rebuildDrawn() {
   const requests = snapshot.map((w) => ({ kind: w.kind, face: w.face, fitFeature: w.fitFeature,
     a: part.localToWorld(w.a.clone()).toArray(),
     b: w.b ? part.localToWorld(w.b.clone()).toArray() : undefined }));
-  const job = geometryJob('build', { requests, avoid: autoSupports() });
+  const job = geometryJob('build', { requests, avoid: autoSupports(), external: autoLike() ? finTris : [] });
   updateReadout(lastBuilt);
   jobs.run('build', topology, job).then((reply) => {
     if (!reply || generation !== drawGeneration) return;

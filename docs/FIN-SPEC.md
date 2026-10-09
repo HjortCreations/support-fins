@@ -300,3 +300,16 @@ remain enforced. With Tines on, at least SWAY.minTines (three) printable tines
 must fit. One or two are refused with their count and minimum; increasing wall
 size cannot replace contact. Stilt, base offset and moved contact are reported.
 These fitted shapes have not been physically print-validated.
+
+## Optional tapered base additions
+
+Base thickness (1–4× actual wall gauge) and per-end reach (0–300 mm) are separate.
+Defaults 1×/0 add nothing. Only straight, plate-connected supports are reinforced;
+curved/part-mounted or unsuitable supports report a refusal. The extra solid
+returns to the actual body at 20% height, retaining the original contacts.
+Model/containment/neighbor certification includes already accepted additions.
+Range ownership follows the original fin through selection, removal and export.
+Draw passes explicit floor stations, including squat floors, never the top line.
+Draw reinforcement avoids Auto supports; Auto bases do not receive hand walls.
+Suggest + Add therefore reports this one-way collision limitation. Overlapping
+solids count before union in the mass estimate; use the slicer's union estimate.

@@ -131,10 +131,22 @@ function syncPrintProfile() {
   applyTunables({ nozzle: p.nozzle, wallLines: p.wallLines, roundFeet: el('rounded-feet').checked });
   el('wall-lines-value').textContent = `${p.wallLines} lines`;
   el('wall-thickness').textContent = `${+p.wallThickness.toFixed(3)} mm`;
+  syncBaseSettings();
   syncSectionSums();
 }
 for (const id of ['nozzle', 'wall-lines', 'rounded-feet']) {
   el(id).addEventListener('input', () => { syncPrintProfile(); debouncedRefresh(); });
+}
+function syncBaseSettings() {
+  const p = printDimensions(el('nozzle').valueAsNumber, el('wall-lines').valueAsNumber);
+  if (!p) return;
+  applyTunables({ nozzle: p.nozzle, wallLines: p.wallLines, roundFeet: el('rounded-feet').checked,
+    baseThickness: el('base-thickness').valueAsNumber, baseSpread: el('base-spread').valueAsNumber });
+  el('base-thickness-value').textContent = `${FIN.baseThickness}× · ${+(PROP.th * FIN.baseThickness).toFixed(3)} mm`;
+  el('base-spread-value').textContent = `${FIN.baseSpread} mm / end`;
+}
+for (const id of ['base-thickness', 'base-spread']) {
+  el(id).addEventListener('input', () => { syncBaseSettings(); debouncedRefresh(); });
 }
 // Tine grip only means anything when the tines are on, so hide its slider with the
 // toggle (keeps the panel honest -- no dead control).

@@ -155,6 +155,28 @@ function setFinNote(lead, detail) {
   else { info.title = ''; info.hidden = true; }
 }
 
+function baseNotes(built, lead, help) {
+  const r = {};
+  for (const f of built?.fins ?? []) {
+    const status = f.baseReinforcement?.status;
+    if (status && status !== 'off' && !removedIds.has(f.id)) r[status] = (r[status] ?? 0) + 1;
+  }
+  if (drawShown()) for (const w of drawnWalls.filter((w) => w.ok)) {
+    const status = w.info?.baseReinforcement?.status;
+    if (status && status !== 'off') r[status] = (r[status] ?? 0) + 1;
+  }
+  const applied = (r.added ?? 0) + (r.partial ?? 0);
+  if (applied) help.push(`Tapered bases added to ${applied} supports. The original contacts remain unchanged.`);
+  if (r.partial) lead.push(`${r.partial} base extensions limited by nearby geometry`);
+  if (r.skipped) lead.push(`${r.skipped} base reinforcements skipped: no clear space or suitable bed-connected base`);
+  if (autoLike() && drawShown() && drawnWalls.some((w) => w.ok)
+      && built?.fins?.some((f) => !removedIds.has(f.id)
+        && ['added', 'partial'].includes(f.baseReinforcement?.status))) {
+    lead.push(t('Check Auto bases against hand-placed supports in the slicer'));
+    help.push(t('Hand-placed reinforcement avoids Auto supports, but Auto bases are generated without the hand-placed walls. In Suggest + Add, their bases can overlap a drawn wall. Inspect the union or use Draw only.'));
+  }
+}
+
 /**
  * Draw mode's readout. Reports the breakaway WALLS the user drew by hand (a wall
  * per line, straight onto the overhang), plus the pad/seating verdict from
@@ -222,6 +244,7 @@ function updateDrawReadout(built, ms) {
       : 'this part balances on one point. Turn the bed pad on to seat it, or rotate until it sits down');
   }
   if (built && padNote(built)) lead.push(padNote(built));
+  baseNotes(null, lead, help);
   setFinNote(lead, help);
   if (ms != null) el('s-time').textContent = `${analysisTiming} · pad ${ms.toFixed(0)} ms`;
 }
@@ -445,6 +468,7 @@ function updateFinReadout(built, ms) {
       }
     }
   }
+  baseNotes(built, lead, help);
   setFinNote(lead, help);
   // ms is absent when a hand-drawn wall (Suggest + Draw mix) re-runs the readout
   // without rebuilding the auto fins -- don't touch the timing line then, and

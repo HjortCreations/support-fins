@@ -37,6 +37,7 @@ import { findWallPatches } from './planes.js';
 import { buildProps, noProps, PROP } from './prop.js';
 import { buildSwayBraces } from './sway.js';
 import { printDimensions } from './print-profile.js';
+import { baseSettings, reinforceBuiltBases } from './base-reinforcement.js';
 import { CUT, CUTOUT_PATTERNS } from './cutout.js';
 import { FIN } from './fins/config.js';
 import { buildPad, PAD } from './fins/pad.js';
@@ -94,6 +95,8 @@ export function applyTunables(t = {}) {
     for (const [obj, values] of legacyProfile) Object.assign(obj, values);
   }
   FIN.roundFeet = PROP.roundFeet = PERP.roundFeet = t.roundFeet === true;
+  if (Number.isFinite(t.baseThickness)) FIN.baseThickness = baseSettings(t.baseThickness).baseThickness;
+  if (Number.isFinite(t.baseSpread)) FIN.baseSpread = baseSettings(1, t.baseSpread).baseSpread;
   const profile = printDimensions(t.nozzle, t.wallLines);
   if (profile) {
     FIN.nozzle = profile.nozzle;
@@ -136,6 +139,7 @@ export function applyTunables(t = {}) {
  */
 export function buildFins(topo, result, rot, opts = {}) {
   const built = buildFinsAndBraces(topo, result, rot, opts);
+  reinforceBuiltBases(built, topo, result, rot, FIN, PROP.th, Math.max(0.01, Math.min(PROP.gap, PROP.sideClear) * 0.95));
   // A piece of the part that starts in mid-air (a cut clean through, a loose
   // body) needs saying no matter what was placed: see floatingPieces.
   built.floating = floatingPieces(topo, result, rot);
@@ -164,7 +168,7 @@ function buildFinsAndBraces(topo, result, rot, opts = {}) {
   let id = fins.reduce((m, f) => Math.max(m, (f.id ?? -1) + 1), fins.length);
   const braces = sw.ribs.map((r) => ({
     height: r.height, length: r.depth, tines: r.tines, rows: 0, stilt: 0, lean: 0, bearing: 0, site: null,
-    id: id++, kind: 'sway',
+    id: id++, kind: 'sway', wallThickness: r.th,
     triRanges: [[r.triRange[0] + base, r.triRange[1] + base]],
     line: r.foot, span: r.depth,
   }));

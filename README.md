@@ -73,6 +73,16 @@ geometry. See [the nozzle guide](docs/NOZZLE-PROFILES.md) for dimensions,
 clearance limits and export checks. Nozzle profiles are geometry-tested;
 the new large-nozzle profiles have not been physically print-validated.
 
+### Tapered bases
+
+**Base thickness** (1–4×) and **Base spread** (0–300 mm per end) independently
+strengthen plate-connected supports. The extra gauge returns to the wall gauge
+over its lower 20%. Clearances can limit or skip an extension; the readout says
+when that happens. Added triangles belong to their support for removal and export.
+In Suggest + Add, manual reinforcement avoids Auto, but Auto does not check hand
+walls when growing its bases; inspect that mix in the slicer. These bases are
+geometry-tested, with no new physical print validation.
+
 ### Rounded support feet
 
 **Walls → Rounded feet** rounds normal, squat, wedge and Sway foot ends inside

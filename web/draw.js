@@ -272,7 +272,8 @@ export function drawnWall(a, b, tris, zBed = 0, opts = {}) {
     if (squat) {
       out.push(...squat.tris);
       const tines = withTines(squat.top, squat.partAttached ? undefined : PROP.squatBrimH);
-      return { ok: true, tris: out, length: len, height: squat.height, partAttached: squat.partAttached, squat: true, tines, top: squat.top };
+      return { ok: true, tris: out, length: len, height: squat.height, partAttached: squat.partAttached,
+        squat: true, tines, top: squat.top, floors: squat.floors };
     }
     const clickTop = Math.min(a[2], b[2]) - zBed;
     if (clickTop >= PROP.minHeight + PROP.gap) {
@@ -310,7 +311,7 @@ function squatWall(topPA, line, tris, zBed, plateOnly = false) {
       if (mold && sweepBetween(mold.top, mold.floor, t, PROP.minHeightSquat)) {
         let height = 0;
         for (let i = 0; i < topPA.length; i++) height = Math.max(height, topPA[i][2] - PROP.gap - floor[i][2]);
-        return { tris: t, top: topPA, height, partAttached: true };
+        return { tris: t, top: topPA, height, partAttached: true, floors: floor.map((p) => p[2]) };
       }
     }
   }
@@ -348,5 +349,5 @@ function squatWall(topPA, line, tris, zBed, plateOnly = false) {
     }
     i = j + 1;
   }
-  return { tris: t, top: line, height: Math.max(...h), partAttached: false };
+  return { tris: t, top: line, height: Math.max(...h), partAttached: false, floors: line.map(() => zBed) };
 }
