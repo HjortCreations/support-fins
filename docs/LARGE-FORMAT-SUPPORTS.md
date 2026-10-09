@@ -70,6 +70,13 @@ the original thin breakaway neck and contact geometry intact.
 - **Base spread** is hidden and ignored in Cross mode. Its value is retained for
   switching back to Taper.
 
+In Draw, base-control edits rebuild the manual fins directly, without waiting for
+a new seating/pad pass. The text beneath **Cross reach** reports the arm reach
+actually built. If geometry limits it, the requested and built values can differ;
+increasing the request may leave the same arm size when no larger arm clears the
+model or neighbouring supports. Cross reach changes plate-level arm reach, while
+the near-top arm dimensions remain tied to the wall thickness.
+
 The cross follows the original wall's centre as it narrows and has a rounded foot
 of its own. Low contact tails do not shorten the whole cross. If the body is too
 short, curved or unsuitable, no detached rib is created.
@@ -129,6 +136,10 @@ Support generation uses CPU mesh calculations in background workers. Draw's
 manual supports and previews share a persistent worker that caches the model;
 the existing automatic/pad worker handles seating and the bed pad independently.
 Export waits while supports are being regenerated or a generation error remains.
+It also waits for queued settings changes. A small **Calculating in background…**
+notice appears at the bottom of the viewport while settings, pad/Auto, manual-fin
+or preview work remains pending. It disappears when all current stages finish;
+very quick updates avoid flashing it. The notice leaves the controls available.
 The interface remains available during support generation; import, pose analysis,
 mesh display and export still include work on the UI thread.
 

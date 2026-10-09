@@ -30,11 +30,11 @@ html, body {
 #viewport { position: fixed; inset: 0; }
 #viewport canvas { display: block; }
 
-/* ---------- long-build spinner ---------- */
+/* ---------- background calculation notice ---------- */
 #spinner {
   position: fixed;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
+  left: 50%; bottom: 18px;
+  transform: translateX(-50%);
   z-index: 4;
   display: flex;
   align-items: center;
@@ -43,7 +43,7 @@ html, body {
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--panel);
-  color: var(--dim);
+  color: var(--text);
   font-size: 12px;
   pointer-events: none;               /* informational only; never blocks the canvas */
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
@@ -52,12 +52,12 @@ html, body {
      display:none instead skipped the fade unpredictably. */
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.5s ease, visibility 0s linear 0.5s;   /* fade out, then hide */
+  transition: opacity 0.15s ease, visibility 0s linear 0.15s;
 }
 #spinner.show {
   opacity: 1;
   visibility: visible;
-  transition: opacity 0.5s ease, visibility 0s;               /* show immediately, fade in */
+  transition: opacity 0.15s ease, visibility 0s;
 }
 @media (prefers-reduced-motion: reduce) {
   #spinner, #spinner.show { transition: none; }

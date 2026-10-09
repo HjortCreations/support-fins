@@ -15,6 +15,11 @@ contact, small low faces, sloping faces, insufficient grip-layer refusals, brace
 collision protection and worker ownership/export geometry with Cross reinforcement.
 Auto's small-part exclusion remains in force.
 
+**`build_activity.test.js`** -- the background notice survives overlapping pad,
+manual-fin and queued-settings stages; cancellation and failure release it.
+`draw_worker.test.js` also changes Cross reach on the same cached model and
+checks that both the arm metadata and exported triangle extent change.
+
 The suite covers shipped regressions and new feature invariants. The root-level
 command above also runs the shared plugin and CLI tests, matching GitHub CI.
 

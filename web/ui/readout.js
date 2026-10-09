@@ -133,6 +133,7 @@ let lastBuilt = null;
 let lastMs = null;
 
 export function updateReadout(built, ms) {
+  el('cross-built').textContent = '';
   lastBuilt = built;
   if (ms != null) lastMs = ms;
   if (finMode === 'draw') updateDrawReadout(built, ms);
@@ -158,19 +159,38 @@ function setFinNote(lead, detail) {
 function baseNotes(built, lead, help) {
   const r = {};
   let crosses = 0;
+  const crossInfo = [];
   for (const f of built?.fins ?? []) {
     const status = f.baseReinforcement?.status;
     if (status && status !== 'off' && !removedIds.has(f.id)) r[status] = (r[status] ?? 0) + 1;
     if (f.baseReinforcement?.cross && !removedIds.has(f.id)) crosses++;
+    if (f.baseReinforcement?.style === 'cross' && !removedIds.has(f.id)) crossInfo.push(f.baseReinforcement);
   }
   if (drawShown()) for (const w of drawnWalls.filter((w) => w.ok)) {
     const status = w.info?.baseReinforcement?.status;
     if (status && status !== 'off') r[status] = (r[status] ?? 0) + 1;
     if (w.info?.baseReinforcement?.cross) crosses++;
+    if (w.info?.baseReinforcement?.style === 'cross') crossInfo.push(w.info.baseReinforcement);
   }
   const applied = (r.added ?? 0) + (r.partial ?? 0);
   if (applied) help.push(`Tapered bases added to ${applied} supports. The original contacts remain unchanged.`);
   if (crosses) help.push(`${crosses} supports have perpendicular cross ribs with rounded feet, tapering toward the top.`);
+  if (crossInfo.length) {
+    const requested = crossInfo[0].crossRequested ?? el('cross-reach').valueAsNumber;
+    const arms = crossInfo.filter((i) => i.cross).flatMap((i) => [i.crossLeft, i.crossRight]);
+    const mm = (v) => +v.toFixed(1);
+    let text;
+    if (!arms.length) text = t('Cross reach: {requested} mm requested; no cross could be built', { requested: mm(requested) });
+    else if (arms.every((v) => Math.abs(v - requested) < 1e-5) && crosses === crossInfo.length) {
+      text = t('Cross reach: {reach} mm per arm built', { reach: mm(requested) });
+    } else {
+      const lo = mm(Math.min(...arms)), hi = mm(Math.max(...arms));
+      text = t('Cross reach: {requested} mm requested; built arms {actual} mm', {
+        requested: mm(requested), actual: lo === hi ? lo : `${lo}–${hi}` });
+    }
+    lead.push(text);
+    el('cross-built').textContent = drawBusy ? t('Updating cross…') : text;
+  }
   if (r.partial) lead.push(`${r.partial} base extensions limited by nearby geometry`);
   if (r.skipped) lead.push(`${r.skipped} base reinforcements skipped: no clear space or suitable bed-connected base`);
 }

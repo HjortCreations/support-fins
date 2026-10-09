@@ -61,6 +61,10 @@ bounded queue that replaces superseded requests. Export waits for the current
 supports to finish. Worker failures are reported instead of running heavy geometry
 on the UI thread.
 
+A **Calculating in background…** notice stays visible while the current pad,
+manual supports or preview are still being built. Draw base-control edits go
+straight to the manual worker; they do not rebuild the unchanged pad first.
+
 The [performance report](docs/PERFORMANCE.md) records timings, the 1/2/4-worker
 experiment, remaining bottlenecks and the reasons for using one cached manual
 worker rather than duplicating the model across many workers on every click.
@@ -112,8 +116,9 @@ wall's centre as it tapers. Low contact tails do not cap the entire cross.
 (default 20 mm), independently of fin height or length. Cross does not apply
 the longitudinal **Base spread**, which remains available in Taper mode.
 **Base thickness** controls its thickness at the plate. Blocked
-arms are shortened or omitted, with status feedback. Original breakaway contacts
-are preserved. With a nozzle profile, normal, squat and sway foot plates and
+arms are shortened or omitted, and the actual arm reach is reported below
+**Cross reach**. Original breakaway contacts are preserved. With a nozzle profile,
+normal, squat and sway foot plates and
 wedge feet now have inscribed rounded ends; reinforced taper bases are rounded
 too. Round feet stay within the original clearance envelope. The cross rib gets
 its own rounded foot, checked with the new geometry against the part and neighbours.

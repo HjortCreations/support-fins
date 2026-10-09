@@ -71,11 +71,12 @@ function additionBlocked(extra, contains, topo, rot, offset, obstacles, gap) {
 
 /** Perpendicular rib, broad at the plate and narrowing near the original wall's top. */
 function reinforceCross(tris, line, height, th, topo, rot, offset, settings, obstacles, gap) {
+  const reach = Number.isFinite(settings.crossReach) ? Math.max(5, Math.min(80, settings.crossReach)) : 20;
   const base = reinforceBase(tris, line, height, th, topo, rot, offset,
     { ...settings, baseStyle: 'taper', baseSpread: 0 }, obstacles, gap);
   const skip = (reason) => base.tris.length
-    ? { ...base, status: 'partial', style: 'cross', cross: false, reason }
-    : { status: 'skipped', style: 'cross', cross: false, reason, tris: [] };
+    ? { ...base, status: 'partial', style: 'cross', cross: false, crossRequested: reach, reason }
+    : { status: 'skipped', style: 'cross', cross: false, crossRequested: reach, reason, tris: [] };
   if (!tris.length || !line?.length || bounds(tris).lo[2] > 1e-5) return skip('support starts on the part');
   const a = line[0], b = line.at(-1), length = Math.hypot(b[0] - a[0], b[1] - a[1]);
   if (length < 1 || !(height > 2)) return skip('support too low or narrow');
@@ -103,7 +104,6 @@ function reinforceCross(tris, line, height, th, topo, rot, offset, settings, obs
     return insidePart(own, ID, ZERO, ...P(s, 0, z));
   })) return skip('cross would not join the original support along its height');
   const { baseThickness } = baseSettings(settings.baseThickness);
-  const reach = Number.isFinite(settings.crossReach) ? Math.max(5, Math.min(80, settings.crossReach)) : 20;
   const wide = half * baseThickness;
   const footH = Math.min(0.6, h / 4), footMargin = Math.max(1, th / 8);
   const attempts = [1, 0.75, 0.5, 0.25].flatMap((f) => [[reach * f, reach * f], [0, reach * f], [reach * f, 0]]);
@@ -136,7 +136,7 @@ function reinforceCross(tris, line, height, th, topo, rot, offset, settings, obs
     if (reason) continue;
     const partial = (base.status !== 'off' && base.status !== 'added') || left !== reach || right !== reach;
     return { ...base, status: partial ? 'partial' : 'added', style: 'cross', cross: true,
-      tris: [...base.tris, ...extra], crossHeight: h, crossLeft: left, crossRight: right,
+      tris: [...base.tris, ...extra], crossHeight: h, crossRequested: reach, crossLeft: left, crossRight: right,
       reason: partial ? 'one or more base arms limited' : '' };
   }
   return skip(reason);

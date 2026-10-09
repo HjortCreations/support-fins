@@ -9,6 +9,7 @@ import { PROP } from '../prop.js';
 import { CUT } from '../cutout.js';
 import { printDimensions } from '../print-profile.js';
 import { el } from './dom.js';
+import { setBuildPending, settingsPending } from './build-status.js';
 import { scene, meshFrom } from './scene.js';
 import {
   removeMode, syncRemoveUI, cancelRemove, clearFinHover, adoptFins, forgetFins,
@@ -71,10 +72,9 @@ let finWorker;               // undefined = not tried yet, null = unavailable, e
 let finGen = 0;              // bumped per request; a reply with a stale id is ignored
 let finT0 = 0;               // start time of the in-flight build, for the readout timing
 let lastOpts = null;
-let finSpinnerTimer = null;  // shows the spinner only if a build runs past ~1s
 let finBusy = false;         // a worker build is outstanding (used to supersede it)
 let finFailed = false;
-export const geometryPending = () => finsVisible && (finBusy || finFailed || drawBusy || drawFailed);
+export const geometryPending = () => finsVisible && (settingsPending() || finBusy || finFailed || drawBusy || drawFailed);
 
 function generationFailed(error) {
   finBusy = false; finFailed = true; clearSpinner();
@@ -84,21 +84,8 @@ function generationFailed(error) {
   el('s-fin-note').textContent = `Support generation failed: ${error}. Try again or reload.`;
 }
 
-// Reveal the spinner only for builds that actually run long, so a sub-second
-// rebuild never flashes it. Cleared the moment the build lands (applyBuilt).
-function armSpinner() {
-  clearTimeout(finSpinnerTimer);
-  // Short delay so a quick build never shows it at all; the 0.5s CSS fade-in (the
-  // .show class) then eases it on rather than snapping. The spinner is always in
-  // the layout, so toggling the class transitions reliably every time -- the
-  // earlier display:none/hidden toggle skipped the fade unpredictably.
-  finSpinnerTimer = setTimeout(() => el('spinner').classList.add('show'), 300);
-}
-function clearSpinner() {
-  clearTimeout(finSpinnerTimer);
-  finSpinnerTimer = null;
-  el('spinner').classList.remove('show');
-}
+const armSpinner = () => setBuildPending('auto', true);
+const clearSpinner = () => setBuildPending('auto', false);
 
 export function finOpts() {
   return { mode: finMode,
@@ -171,6 +158,7 @@ function getFinWorker() {
 function supersedeBuild() {
   if (finBusy && finWorker) { finWorker.terminate(); finWorker = undefined; }
   finBusy = false;
+  clearSpinner();
 }
 
 export function refreshFins() {
@@ -228,7 +216,6 @@ export function refreshFins() {
 // automatic walls; it shows the hand-drawn ones instead.
 function applyBuilt(built) {
   finBusy = false;
-  clearSpinner();
   for (const m of [finMesh, padMesh]) { if (m) { scene.remove(m); m.geometry.dispose(); } }
   finMesh = padMesh = null;
   clearFinHover();
@@ -261,6 +248,7 @@ function applyBuilt(built) {
   // Restore-all visibility keys off removedIds (this orientation's removals), which
   // is only known after the reconcile above -- refresh it once the build lands.
   syncRemoveUI();
+  clearSpinner(); // Draw may still be building; its stage keeps the notice up.
 }
 
 /**

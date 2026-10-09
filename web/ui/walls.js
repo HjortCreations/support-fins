@@ -8,6 +8,7 @@ import { t } from './i18n.js';
 import * as THREE from 'three';
 import { LatestWorker } from '../worker-queue.js';
 import { el } from './dom.js';
+import { setBuildPending } from './build-status.js';
 import { viewport, renderer, scene, camera, meshFrom, raycaster, pointer } from './scene.js';
 import { removedIds } from './remove.js';
 import { histPush } from './history.js';
@@ -25,14 +26,17 @@ import { lastBuilt, swayOpts, finOpts, finTris } from './finbuild.js';
 // part through later rotations, the same way the auto fins are rebuilt each time
 // the orientation changes.
 export let drawnWalls = [];        // committed walls: { a: Vector3(local), b: Vector3(local), ok, info }
-export function setDrawnWalls(w) { drawnWalls = w; drawGeneration++; jobs.cancel('build'); }
+export function setDrawnWalls(w) {
+  drawnWalls = w; drawGeneration++; jobs.cancel('build');
+  setBuildPending('draw', false);
+}
 export let drawnMesh = null;
 export let drawnTris = [];
 export let drawStart = null;       // Vector3 (local) -- first click of a wall in progress
 export let drawMsg = '';           // last placement result, for the readout
 export let drawBusy = false;
 export let drawFailed = false;
-let drawGeneration = 0, previewGeneration = 0;
+let drawGeneration = 0, previewGeneration = 0, previewJob = 0;
 const jobs = new LatestWorker(new URL('../drawworker.js', import.meta.url));
 
 function geometryJob(kind, fields = {}) {
@@ -106,6 +110,8 @@ export function clearPreview() {
   drawStart = null;
   previewGeneration++;
   jobs.cancel('preview');
+  previewJob++;
+  setBuildPending('preview', false);
   drawDot.visible = drawCursor.visible = drawBand.visible = false;
   if (ghostMesh) { scene.remove(ghostMesh); ghostMesh.geometry.dispose(); ghostMesh = null; }
 }
@@ -117,12 +123,15 @@ export function rebuildDrawn() {
   drawFailed = false;
   if (!drawShown() || !topology || !lastResult || !drawnWalls.length) {
     drawBusy = false;
+    setBuildPending('draw', false);
     if (drawnMesh) { scene.remove(drawnMesh); drawnMesh.geometry.dispose(); drawnMesh = null; }
     drawnTris = [];
     syncSelection();
+    updateReadout(lastBuilt);
     return;
   }
   drawBusy = true;
+  setBuildPending('draw', true);
   const started = performance.now();
   const snapshot = [...drawnWalls];
   part.updateMatrixWorld();
@@ -150,13 +159,16 @@ export function rebuildDrawn() {
     drawnMesh = meshFrom(drawnTris, drawMaterial);
     syncSelection();
     updateReadout(lastBuilt);
-    el('s-time').textContent += ` · Draw ${(performance.now() - started).toFixed(0)} ms`;
+    el('s-time').textContent = el('s-time').textContent.replace(/ · Draw \d+ ms/g, '')
+      + ` · Draw ${(performance.now() - started).toFixed(0)} ms`;
     updateFit();
+    setBuildPending('draw', false);
   }).catch((error) => {
     if (generation !== drawGeneration) return;
     drawBusy = false; drawFailed = true;
     drawMsg = `Support generation failed: ${error.message}. Try changing a setting or reload.`;
     updateReadout(lastBuilt);
+    setBuildPending('draw', false);
   });
 }
 
@@ -247,11 +259,14 @@ function updatePreview(hitPoint) {
     ghostQueued = null;
     if (!q || !drawStart || !drawActive()) return;
     const generation = previewGeneration;
+    const token = ++previewJob;
+    setBuildPending('preview', true);
     jobs.run('preview', topology, geometryJob('preview', { a: q[0], b: q[1] })).then((reply) => {
       if (!reply || generation !== previewGeneration || !drawStart || !drawActive()) return;
       if (ghostMesh) { scene.remove(ghostMesh); ghostMesh.geometry.dispose(); ghostMesh = null; }
       if (reply.built.ok) ghostMesh = meshFrom(reply.built.tris, ghostMaterial);
-    }).catch(() => { /* committed jobs report errors; a ghost never enables export */ });
+    }).catch(() => { /* committed jobs report errors; a ghost never enables export */ })
+      .finally(() => { if (token === previewJob) setBuildPending('preview', false); });
   });
 }
 
@@ -331,6 +346,11 @@ export function markPrintTrisDirty() {
   drawGeneration++; previewGeneration++;
   jobs.cancel('build'); jobs.cancel('preview');
   drawBusy = drawShown() && drawnWalls.length > 0;
+  previewJob++;
+  setBuildPending('preview', false);
+  // The old job was cancelled; refreshFins/rebuildDrawn arms the replacement.
+  // An Auto failure must not leave a notice for a Draw job that never started.
+  setBuildPending('draw', false);
 }
 
 // ---- the draw pointer (app.js dispatches here while drawActive()) ----------
@@ -344,6 +364,8 @@ export function drawHover(ev) {
   } else {
     previewGeneration++;
     jobs.cancel('preview');
+    previewJob++;
+    setBuildPending('preview', false);
     drawCursor.visible = drawBand.visible = false;
     if (ghostMesh) { scene.remove(ghostMesh); ghostMesh.geometry.dispose(); ghostMesh = null; }
     renderer.domElement.style.cursor = '';

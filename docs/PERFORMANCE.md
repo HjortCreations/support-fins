@@ -118,6 +118,20 @@ unconditionally. Packed transferable/shared mesh data would reduce copies, but
 requires changing the current object-rich topology and deployment headers for
 shared memory. Benchmark realistic parts and verify geometry before adopting it.
 
+## Base edits and calculation feedback
+
+Base-only edits in Draw now go straight to the cached manual worker. Cross reach,
+base shape, base thickness and base spread cannot change seating or pad geometry,
+so rebuilding the pad first only adds a delay. A pending nozzle/pad edit still
+requires the full pass even when a base edit follows it in the same debounce
+window. Other placement modes retain the normal full rebuild.
+
+The viewport notice tracks queued settings, Auto/pad, Draw and preview stages
+together, rather than disappearing when the pad finishes before a manual fin.
+Export remains blocked during queued settings and committed builds. Cross results
+carry the requested arm reach as well as the actual left/right reaches; the UI
+reports clipping instead of silently presenting the slider value as built size.
+
 ## Reproduce
 
 From the repository root:

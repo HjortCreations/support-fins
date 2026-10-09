@@ -1,4 +1,9 @@
 export default {
+  "Calculating in background…": "Berechnung im Hintergrund…",
+  "Updating cross…": "Kreuz wird aktualisiert…",
+  "Cross reach: {requested} mm requested; no cross could be built": "Kreuzweite: {requested} mm angefordert; kein Kreuz konnte erstellt werden",
+  "Cross reach: {reach} mm per arm built": "Kreuzweite: {reach} mm je Arm erstellt",
+  "Cross reach: {requested} mm requested; built arms {actual} mm": "Kreuzweite: {requested} mm angefordert; erstellte Arme {actual} mm",
   "times and filament from {profile}; yours will differ": "Druckzeit und Materialverbrauch geschätzt mit {profile}; tatsächliche Werte hängen von Ihrem Drucker ab.",
 "The filament you'll print in. PETG fuses to supports much harder than PLA, so PETG loosens the gaps, shrinks the tine bite, and gives the bed pad a gap instead of a bite. PLA keeps the tighter grip.": "Das Filament, mit dem gedruckt wird. PETG verschmilzt deutlich fester mit Stützen als PLA, daher vergrößert PETG die Abstände, verringert den Eingriff der Zacken und versieht den Stützfuß mit einem Spalt statt Verankerung. PLA behält den festeren Halt.",
 

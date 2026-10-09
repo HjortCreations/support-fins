@@ -11,7 +11,8 @@ import { MATERIAL } from '../materials.js';
 import { el } from './dom.js';
 import { histPush } from './history.js';
 import { removeMode, syncRemoveUI, cancelRemove } from './remove.js';
-import { setDrawMsg, clearPreview, syncDrawControls } from './walls.js';
+import { setDrawMsg, clearPreview, syncDrawControls, rebuildDrawn } from './walls.js';
+import { setBuildPending } from './build-status.js';
 import { lastBuilt, refreshFins } from './finbuild.js';
 import { setGizmo } from './pose.js';
 import { paintOverhangs } from './part.js';
@@ -118,9 +119,22 @@ for (const id of Object.values(PAD_FIELDS)) {
 // too coarse -- no live preview at all -- so debounce instead: quick enough to feel
 // live on a small part, one rebuild instead of dozens on a large one.
 let refreshTimer = null;
-function debouncedRefresh(ms = 180) {
+let needsFullRefresh = false;
+function debouncedRefresh(ms = 180, baseOnly = false) {
   clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(() => { refreshTimer = null; refreshFins(); }, ms);
+  needsFullRefresh ||= !baseOnly; // A following base edit must not discard a pending pad/nozzle edit.
+  setBuildPending('settings', finsVisible);
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null;
+    const full = needsFullRefresh;
+    needsFullRefresh = false;
+    // Base reinforcement cannot change seating or the pad. Rebuild the manual
+    // fins directly, rather than waiting behind a new pad pass on a large mesh.
+    try {
+      if (!full && finMode === 'draw') rebuildDrawn();
+      else refreshFins();
+    } finally { setBuildPending('settings', false); }
+  }, ms);
 }
 function syncPrintProfile() {
   const p = printDimensions(el('nozzle').valueAsNumber, el('wall-lines').valueAsNumber);
@@ -141,7 +155,11 @@ function syncBaseSettings() {
   el('base-spread-value').textContent = `${FIN.baseSpread} mm / end`;
 }
 for (const id of ['base-style', 'base-thickness', 'base-spread', 'cross-reach']) {
-  el(id).addEventListener('input', () => { syncBaseSettings(); debouncedRefresh(); });
+  el(id).addEventListener('input', () => {
+    syncBaseSettings();
+    if (FIN.baseStyle === 'cross' && finsVisible) el('cross-built').textContent = t('Updating cross…');
+    debouncedRefresh(180, true);
+  });
 }
 for (const id of ['nozzle', 'wall-lines']) {
   el(id).addEventListener('input', () => { syncPrintProfile(); debouncedRefresh(); });
