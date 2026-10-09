@@ -31,6 +31,54 @@ class FakeWorker {
   reply(data = {}) { this.onmessage({ data: { id: this.messages.at(-1).id, built: data } }); }
 }
 
+Deno.test('Auto failure retries once in a fresh worker and preserves pending Draw', async () => {
+  const workers = [], queue = new LatestWorker('', () => {
+    const w = new FakeWorker(); workers.push(w); return w;
+  });
+  const model = { pos: [1] };
+  const auto = queue.run('auto', model, { kind: 'auto', pose: 1 });
+  const draw = queue.run('build', model, { kind: 'build' });
+  workers[0].onerror();
+  assert(workers[0].terminated && workers.length === 2);
+  assert(workers[1].messages[0].model.pos[0] === 1, 'fresh worker missed the model');
+  assert(workers[1].messages[0].job.pose === 1);
+  workers[0].onerror(); // An old worker cannot kill the retry.
+  workers[1].reply({ ok: true }); assert(await auto !== null);
+  assert(workers[1].messages[1].job.kind === 'build', 'lost queued Draw request');
+  workers[1].reply({ ok: true }); assert(await draw !== null);
+  queue.dispose();
+});
+
+Deno.test('Auto failure retries the latest pose only and a second error rejects cleanly', async () => {
+  const workers = [], queue = new LatestWorker('', () => {
+    const w = new FakeWorker(); workers.push(w); return w;
+  });
+  const model = { pos: [1] };
+  const old = queue.run('auto', model, { pose: 1 });
+  const latest = queue.run('auto', model, { pose: 2 });
+  workers[0].onerror(); assert(await old === null);
+  assert(workers[1].messages[0].job.pose === 2, 'retried obsolete Auto pose');
+  workers[1].onmessage({ data: { id: workers[1].messages[0].id, error: 'failed calculation' } });
+  assert(workers.length === 3 && workers[1].terminated);
+  workers[2].onerror();
+  let failed = false;
+  try { await latest; } catch { failed = true; }
+  assert(failed && workers.length === 3 && workers[2].terminated, 'unbounded retry');
+  queue.dispose();
+});
+
+Deno.test('Auto retry handles worker startup and cloning failures without an inline build', async () => {
+  let attempts = 0;
+  const queue = new LatestWorker('', () => {
+    attempts++;
+    throw new Error('worker unavailable');
+  });
+  let failed = false;
+  try { await queue.run('auto', { pos: [1] }, {}); } catch { failed = true; }
+  assert(failed && attempts === 2 && !queue.active && !queue.pending.size);
+  queue.dispose();
+});
+
 Deno.test('worker queue keeps latest preview, prioritizes builds and sends each model once', async () => {
   const worker = new FakeWorker(), queue = new LatestWorker('', () => worker), model = { pos: [], _insideGrid: { cell: () => 0 } };
   const active = queue.run('preview', model, { n: 1 });

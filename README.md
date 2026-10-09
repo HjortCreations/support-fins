@@ -49,8 +49,8 @@ the way up (auto, or click an upright side in Draw), STL, 3MF and STEP import, S
 
 Still open: scale-aware fin profiles, and the bed pad on tilted exports.
 
-The browser starts in **Draw**: add supports by hand, or select Auto / Full coverage
-explicitly. Draw computes seating and the bed pad without generating discarded Auto
+The browser starts in **Auto**. Choose Draw to add supports by hand;
+Draw computes seating and the bed pad without generating discarded Auto
 walls. Manual walls, Sway braces and previews run in a cached background worker;
 “Calculating in background…” appears during longer jobs. Export waits for the current
 geometry, including queued setting changes.

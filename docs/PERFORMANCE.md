@@ -8,7 +8,7 @@ instead of scanning every triangle at every wall station.
 
 ## Queue, status and export
 
-The browser defaults to Draw; Auto and Full coverage remain explicit options.
+The browser retains Auto as its default; Draw and Full coverage remain selectable.
 One shared coordinator queue serves automatic/seating work, committed Draw builds
 and previews, with that priority order. It retains one active job and at most the
 latest pending job per channel, discards superseded results and sends each model
@@ -19,8 +19,12 @@ Changing the model terminates the old worker and its descendants.
 The non-blocking busy notice appears after 150 ms and lasts until all current
 settings, Auto/seating, Draw and preview stages finish. Old geometry may remain
 visible while computing. Export checks the current committed geometry and pending
-settings; a worker failure reports an error and requires a successful retry.
-Heavy geometry never falls back to the UI thread.
+settings. Auto/seating failures get one automatic retry in a fresh background
+worker, retaining queued Draw requests and dropping superseded poses. If that
+also fails, the page reports an error and keeps export blocked until a later
+successful build. Draw failures report an error directly. Heavy geometry never
+falls back to the UI thread: deterministic errors and unavailable workers cannot
+be repaired by this retry; a synchronous fallback would freeze the controls.
 
 ## Automatic CPU policy
 
@@ -56,8 +60,9 @@ Heavy geometry never falls back to the UI thread.
   without extra topology copies.
 - Child workers cache models and poses. Pressure/backoff releases unused workers;
   30 seconds without geometry work releases all child copies. A failed child pool
-  retries sequentially inside the coordinator worker. A coordinator failure
-  blocks export and permits retry; it never runs geometry inline on the page.
+  retries sequentially inside the coordinator worker. An Auto/seating coordinator
+  failure gets one fresh-worker retry. A second failure blocks export and permits
+  a later retry; geometry never runs inline on the page.
 
 The ceiling of four is deliberate: extra workers copy meshes, build their own
 spatial grids and transfer results. Faster processors do not remove those costs.
