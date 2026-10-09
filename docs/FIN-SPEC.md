@@ -273,3 +273,14 @@ to the engine's legacy dimensions, even after a profile build in the same module
 Material clearances are independent. Explicit invalid profiles are ignored.
 Original legacy goldens remain unchanged; four separate profile goldens record
 the intended browser dimension change. See [the guide](NOZZLE-PROFILES.md).
+
+## Rounded support feet
+
+`roundFeet` is independently selected in the browser (default on), passed with
+worker tunables and forwarded to Sway. Omitted/false keeps legacy engine feet.
+Inscribed eight-step arcs stay within existing collision-certified contours.
+Normal and squat swept flanges round only outside ends. Internal segment caps
+are inset 0.005 mm; overlapping 0.01 mm joints connect them below the lower roof
+without widening the envelope. Wedge and Sway feet use inscribed rounded polygons.
+Profile goldens intentionally record the browser foot-shape change; legacy
+engine goldens remain unchanged. Physical large-nozzle printing is unvalidated.

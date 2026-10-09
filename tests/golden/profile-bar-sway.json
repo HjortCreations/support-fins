@@ -11,14 +11,15 @@
       "sway": true,
       "profile": {
         "nozzle": 0.4,
-        "wallLines": 2
+        "wallLines": 2,
+        "roundFeet": true
       }
     }
   },
   "walls": 0,
   "tines": 0,
   "unserved": 0,
-  "triangles": 816,
+  "triangles": 1328,
   "padTriangles": 0,
   "fins": [
     {
@@ -86,5 +87,5 @@
       ]
     }
   ],
-  "sha256": "a863342ef5d07a1d546ed1c96ed5d86792771b6508e53258ea8bb717b2ffb051"
+  "sha256": "d867a7a9ec9b5f9d7a5c0644e277a5e6528fb033423d5cd03cde9548c3613d1b"
 }

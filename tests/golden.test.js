@@ -27,7 +27,8 @@ const UPDATE = Deno.env.get('UPDATE_GOLDEN') === '1';
 // Read actual browser defaults so changing the form changes these golden builds.
 const HTML = Deno.readTextFileSync(new URL('../web/index.html', import.meta.url));
 const defaultValue = (id) => Number(HTML.match(new RegExp(`<input\\b[^>]*id="${id}"[^>]*value="([^"]+)"`))?.[1]);
-const profile = { nozzle: defaultValue('nozzle'), wallLines: defaultValue('wall-lines') };
+const profile = { nozzle: defaultValue('nozzle'), wallLines: defaultValue('wall-lines'),
+  roundFeet: /<input[^>]*id="rounded-feet"[^>]*checked/.test(HTML) };
 
 const SCENES = [
   // Matthew's manual check on the site: cube.stl at X 40.

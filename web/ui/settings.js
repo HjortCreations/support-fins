@@ -128,12 +128,12 @@ function debouncedRefresh(ms = 180) {
 function syncPrintProfile() {
   const p = printDimensions(el('nozzle').valueAsNumber, el('wall-lines').valueAsNumber);
   if (!p) return;
-  applyTunables({ nozzle: p.nozzle, wallLines: p.wallLines });
+  applyTunables({ nozzle: p.nozzle, wallLines: p.wallLines, roundFeet: el('rounded-feet').checked });
   el('wall-lines-value').textContent = `${p.wallLines} lines`;
   el('wall-thickness').textContent = `${+p.wallThickness.toFixed(3)} mm`;
   syncSectionSums();
 }
-for (const id of ['nozzle', 'wall-lines']) {
+for (const id of ['nozzle', 'wall-lines', 'rounded-feet']) {
   el(id).addEventListener('input', () => { syncPrintProfile(); debouncedRefresh(); });
 }
 // Tine grip only means anything when the tines are on, so hide its slider with the

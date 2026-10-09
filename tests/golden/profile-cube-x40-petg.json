@@ -11,14 +11,15 @@
       "material": "petg",
       "profile": {
         "nozzle": 0.4,
-        "wallLines": 2
+        "wallLines": 2,
+        "roundFeet": true
       }
     }
   },
   "walls": 3,
   "tines": 18,
   "unserved": 0,
-  "triangles": 2124,
+  "triangles": 2196,
   "padTriangles": 28302,
   "fins": [
     {
@@ -70,5 +71,5 @@
       ]
     }
   ],
-  "sha256": "a81b3f7b68bfa8f6c67fd11d3a65f5e2ad61cabd8fd5d595736e10d1aa921d93"
+  "sha256": "8078fa09c0fcc4d6b2443bc621984921543f4b76a4cfd23aebb0c1a77ceb45af"
 }

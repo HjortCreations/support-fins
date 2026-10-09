@@ -10,14 +10,15 @@
     "set": {
       "profile": {
         "nozzle": 0.4,
-        "wallLines": 2
+        "wallLines": 2,
+        "roundFeet": true
       }
     }
   },
   "walls": 3,
   "tines": 18,
   "unserved": 0,
-  "triangles": 2112,
+  "triangles": 2256,
   "padTriangles": 28302,
   "fins": [
     {
@@ -69,5 +70,5 @@
       ]
     }
   ],
-  "sha256": "1e33599f71af0d1392be7178989571e80d9855938345a2c9d22021f0ca6e7b62"
+  "sha256": "355da826a6e5a98c926c8153be971b4cbe41be70525d5e207bbe0d2703f26d7a"
 }

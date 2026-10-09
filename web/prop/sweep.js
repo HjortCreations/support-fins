@@ -7,7 +7,7 @@
  * Split out of prop.js, which re-exports the public names.
  */
 import { cutWall } from '../cutout.js';
-import { ribbon } from '../solids.js';
+import { ribbon, roundedFlange } from '../solids.js';
 import { PROP } from './config.js';
 
 /**
@@ -90,7 +90,7 @@ export function sweep(line, zBed, out, minH = PROP.minHeight) {
   }
 
   if (!cutWall(st, wall, out, PROP)) ribbon(wall, out);
-  ribbon(flange, out);
+  if (PROP.roundFeet) roundedFlange(flange, out); else ribbon(flange, out);
   return true;
 }
 

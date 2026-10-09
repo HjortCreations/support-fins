@@ -73,6 +73,14 @@ geometry. See [the nozzle guide](docs/NOZZLE-PROFILES.md) for dimensions,
 clearance limits and export checks. Nozzle profiles are geometry-tested;
 the new large-nozzle profiles have not been physically print-validated.
 
+### Rounded support feet
+
+**Walls → Rounded feet** rounds normal, squat, wedge and Sway foot ends inside
+existing certified contours. It is enabled in the browser; switch it off for the
+original foot shapes. Engine callers opt in with `tunables.roundFeet: true`.
+Segment joints overlap inside the original envelope, avoiding coincident cap
+faces. This is geometry-tested and still requires a slicer/print check.
+
 ### Sway braces for tall parts
 
 Tall, slender parts have a problem the fins were never built for: nothing overhangs, but

@@ -93,6 +93,7 @@ export function applyTunables(t = {}) {
   if ((!('nozzle' in t) && !('wallLines' in t)) || t.nozzle === null) {
     for (const [obj, values] of legacyProfile) Object.assign(obj, values);
   }
+  FIN.roundFeet = PROP.roundFeet = PERP.roundFeet = t.roundFeet === true;
   const profile = printDimensions(t.nozzle, t.wallLines);
   if (profile) {
     FIN.nozzle = profile.nozzle;
@@ -153,7 +154,7 @@ function buildFinsAndBraces(topo, result, rot, opts = {}) {
   // one of those, a brace is no longer a piece that snaps off by itself.
   const walls = (built.fins ?? []).map((f) => f.line).filter((l) => Array.isArray(l) && l.length);
   const sw = buildSwayBraces(topo, result, rot,
-    { ...printDimensions(FIN.nozzle, FIN.wallLines), ...opts.sway,
+    { ...printDimensions(FIN.nozzle, FIN.wallLines), roundFeet: FIN.roundFeet, ...opts.sway,
       tines: opts.tines, layerHeight: opts.layerHeight, avoid: { walls } });
   // Each brace also gets a fin record: the Auto view draws and exports only the
   // triangles some record claims (per-fin removal), so an unrecorded brace would
