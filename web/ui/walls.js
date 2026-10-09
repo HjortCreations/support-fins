@@ -5,11 +5,8 @@
  * dispatch calls drawHover / drawClick while drawActive().
  */
 import * as THREE from 'three';
-import { drawnWall } from '../draw.js';
-import { swayAtFace, faceIsUpright } from '../sway.js';
-import { FIN } from '../fins.js';
-import { PROP } from '../prop.js';
-import { baseObstacle, reinforceBuiltBases } from '../base-reinforcement.js';
+import { faceIsUpright } from '../sway.js';
+import { LatestWorker } from '../worker-queue.js';
 import { el } from './dom.js';
 import { viewport, renderer, scene, camera, meshFrom, raycaster, pointer } from './scene.js';
 import { removedIds } from './remove.js';
@@ -18,7 +15,7 @@ import { updateReadout } from './readout.js';
 import { pickFace } from './pose.js';
 import { part, topology, rotM3, lastResult, updateFit } from './part.js';
 import { finsVisible, finMode, autoLike, drawAugment } from './settings.js';
-import { lastBuilt, swayOpts, finTris } from './finbuild.js';
+import { lastBuilt, swayOpts, finOpts, finTris } from './finbuild.js';
 
 // ---- draw mode: the user places breakaway walls by hand --------------------
 // A drawn wall IS the same kind of support the auto-placer emits, so it shares
@@ -28,13 +25,22 @@ import { lastBuilt, swayOpts, finTris } from './finbuild.js';
 // part through later rotations, the same way the auto fins are rebuilt each time
 // the orientation changes.
 export let drawnWalls = [];        // committed walls: { a: Vector3(local), b: Vector3(local), ok, info }
-export function setDrawnWalls(w) { drawnWalls = w; }
+export function setDrawnWalls(w) { drawnWalls = w; drawGeneration++; jobs.cancel('build'); }
 export let drawnMesh = null;
 export let drawnTris = [];
 export let drawStart = null;       // Vector3 (local) -- first click of a wall in progress
 export let drawMsg = '';           // last placement result, for the readout
-let printTris = null;       // whole part in print space, cached per orientation
-let printTrisDirty = true;
+export let drawBusy = false;
+export let drawFailed = false;
+let drawGeneration = 0, previewGeneration = 0;
+const jobs = new LatestWorker(new URL('../drawworker.js', import.meta.url));
+
+function geometryJob(kind, fields = {}) {
+  return { kind, rot: [...rotM3.elements], result: { offset: { ...lastResult.offset } },
+    options: { tunables: finOpts().tunables, sway: swayOpts(),
+      draw: { tines: el('tines').checked, tineDensity: el('tine-density').valueAsNumber / 100,
+        layerHeight: el('layer-height').valueAsNumber } }, ...fields };
+}
 
 export const drawMaterial = new THREE.MeshStandardMaterial({
   color: 0x59d98e, roughness: 0.7, metalness: 0.0, side: THREE.DoubleSide,
@@ -95,99 +101,63 @@ export function sizeMarkers() {
   if (drawCursor.visible) drawCursor.scale.setScalar(CURSOR_PX * mmPerPx(drawCursor.position));
 }
 
-/** The whole part in PRINT space (rotated + seated), rebuilt only when the
- *  orientation changes. This is the surface a drawn wall's contact line samples,
- *  the same transform export bakes in. */
-function partPrintTriangles() {
-  if (printTris && !printTrisDirty) return printTris;
-  const { pos, nFaces } = topology;
-  const rot = rotM3.elements;
-  const { x: dx, y: dy, z: dz } = lastResult.offset;
-  const a = new Float64Array(nFaces * 9);
-  for (let i = 0; i < a.length; i += 3) {
-    const x = pos[i], y = pos[i + 1], z = pos[i + 2];
-    a[i]     = rot[0] * x + rot[3] * y + rot[6] * z + dx;
-    a[i + 1] = rot[1] * x + rot[4] * y + rot[7] * z + dy;
-    a[i + 2] = rot[2] * x + rot[5] * y + rot[8] * z + dz;
-  }
-  printTris = a;
-  printTrisDirty = false;
-  return a;
-}
-
-/** Drop any wall-in-progress and hide every transient draw visual. */
+/** Drop the wall-in-progress and invalidate any pending ghost. */
 export function clearPreview() {
   drawStart = null;
+  previewGeneration++;
+  jobs.cancel('preview');
   drawDot.visible = drawCursor.visible = drawBand.visible = false;
   if (ghostMesh) { scene.remove(ghostMesh); ghostMesh.geometry.dispose(); ghostMesh = null; }
 }
 
-/** Rebuild the committed drawn walls for the current orientation. */
+/** Queue committed supports; model queries, tines and reinforcement run in a Worker. */
 export function rebuildDrawn() {
-  if (drawnMesh) { scene.remove(drawnMesh); drawnMesh.geometry.dispose(); drawnMesh = null; }
-  drawnTris = [];
-  if (!drawShown() || !topology || !lastResult) { syncSelection(); return; }
-  part.updateMatrixWorld();
-
-  // Both Draw and the Suggest "+ Add" augment place the SAME thing now: hand-drawn
-  // under-overhang breakaway walls. Each wall is stored as two local endpoints and
-  // re-swept against the part's current pose, so a wall that no longer reaches the
-  // part (rotated away) is flagged by drawnWall rather than dropped silently.
-  const tris = partPrintTriangles();
-  // Drawn walls grip with the same tine comb the auto fins use when Tines is on.
-  const drawOpts = { tines: el('tines').checked,
-                     tineDensity: el('tine-density').valueAsNumber / 100,
-                     layerHeight: el('layer-height').valueAsNumber,
-                     topo: topology, rot: rotM3.elements, offset: lastResult.offset };
-  const wa = new THREE.Vector3(), wb = new THREE.Vector3();
-  // Everything a hand-placed brace has to keep clear of: Auto's braces and walls
-  // (when Auto's supports are on screen), then each hand-placed brace as it is
-  // re-stood, so a rotation that brings two together is reported rather than fused.
-  const auto = autoSupports();
-  const braces = [...auto.braces];
-  for (const w of drawnWalls) {
-    // Each support remembers which triangles of the merged mesh are its own, so a
-    // click on the mesh can be traced back to the support to select / remove.
-    w.triStart = drawnTris.length / 3;
-    if (w.kind === 'sway') {
-      // A hand-placed sway brace: re-stood on the same face at the same spot, so
-      // it follows the part when it turns (and says why if that face no longer
-      // stands upright, or now runs into an earlier brace).
-      part.localToWorld(wa.copy(w.a));
-      const r = swayAtFace(topology, lastResult, rotM3.elements, w.face,
-                           [wa.x, wa.y, wa.z], swayOpts(), { braces, walls: auto.walls });
-      w.ok = r.ok;
-      w.info = r;
-      if (r.ok) { braces.push(r); for (const t of r.tris) drawnTris.push(t); }
-      w.triEnd = drawnTris.length / 3;
-      continue;
-    }
-    part.localToWorld(wa.copy(w.a));
-    part.localToWorld(wb.copy(w.b));
-    const r = drawnWall([wa.x, wa.y, wa.z], [wb.x, wb.y, wb.z], tris, 0, drawOpts);
-    w.ok = r.ok;
-    w.info = r;
-    if (r.ok) for (const t of r.tris) drawnTris.push(t);
-    w.triEnd = drawnTris.length / 3;
+  const generation = ++drawGeneration;
+  jobs.cancel('build');
+  drawFailed = false;
+  if (!drawShown() || !topology || !lastResult || !drawnWalls.length) {
+    drawBusy = false;
+    if (drawnMesh) { scene.remove(drawnMesh); drawnMesh.geometry.dispose(); drawnMesh = null; }
+    drawnTris = [];
+    syncSelection();
+    return;
   }
-  // Build all original walls first, so each reinforcement sees even later neighbours.
-  const ok = drawnWalls.filter((w) => w.ok);
-  const records = ok.map((w) => ({ line: w.info.foot ?? w.info.top,
-    height: w.info.height, wallThickness: w.info.th, triRanges: [[w.triStart * 3, w.triEnd * 3]] }));
-  const built = { triangles: drawnTris, fins: records };
-  const external = autoLike() && finTris.length ? [baseObstacle(finTris)] : [];
-  reinforceBuiltBases(built, topology, lastResult, rotM3.elements, FIN, PROP.th,
-    Math.max(0.01, Math.min(PROP.gap, PROP.sideClear) * 0.95), external);
-  const merged = [];
-  ok.forEach((w, i) => {
-    w.info.baseReinforcement = records[i].baseReinforcement;
-    w.triStart = merged.length / 3;
-    for (const [a, b] of records[i].triRanges) for (let j = a; j < b; j++) merged.push(built.triangles[j]);
-    w.triEnd = merged.length / 3;
+  drawBusy = true;
+  const started = performance.now();
+  const snapshot = [...drawnWalls];
+  part.updateMatrixWorld();
+  const requests = snapshot.map((w) => ({ kind: w.kind, face: w.face,
+    a: part.localToWorld(w.a.clone()).toArray(),
+    b: w.b ? part.localToWorld(w.b.clone()).toArray() : undefined }));
+  const job = geometryJob('build', { requests, avoid: autoSupports(),
+    external: autoLike() ? finTris : [] });
+  updateReadout(lastBuilt);
+  jobs.run('build', topology, job).then((reply) => {
+    if (!reply || generation !== drawGeneration) return;
+    drawBusy = false;
+    const failedNew = [];
+    snapshot.forEach((w, i) => {
+      Object.assign(w, reply.built.items[i]);
+      if (w.justPlaced && !w.ok) {
+        failedNew.push(w);
+        drawMsg = `couldn't place that support: ${w.info.reason}`;
+      }
+      delete w.justPlaced;
+    });
+    drawnWalls = drawnWalls.filter((w) => !failedNew.includes(w));
+    if (drawnMesh) { scene.remove(drawnMesh); drawnMesh.geometry.dispose(); }
+    drawnTris = reply.built.triangles;
+    drawnMesh = meshFrom(drawnTris, drawMaterial);
+    syncSelection();
+    updateReadout(lastBuilt);
+    el('s-time').textContent += ` · Draw ${(performance.now() - started).toFixed(0)} ms`;
+    updateFit();
+  }).catch((error) => {
+    if (generation !== drawGeneration) return;
+    drawBusy = false; drawFailed = true;
+    drawMsg = `Support generation failed: ${error.message}. Try changing a setting or reload.`;
+    updateReadout(lastBuilt);
   });
-  drawnTris = merged;
-  drawnMesh = meshFrom(drawnTris, drawMaterial);
-  syncSelection();
 }
 
 // ---- selecting a hand-placed support, to remove it -------------------------
@@ -256,7 +226,7 @@ export function removeSelected() {
   updateFit();
 }
 
-/** Show the endpoint / cursor / band, and a live ghost of the wall in progress. */
+/** Pointer feedback is cheap; only the ghost's geometry goes to the Worker. */
 let ghostQueued = null;
 function updatePreview(hitPoint) {
   drawCursor.position.copy(hitPoint);
@@ -269,44 +239,30 @@ function updatePreview(hitPoint) {
   bandGeom.setFromPoints([aWorld, hitPoint]);
   bandGeom.attributes.position.needsUpdate = true;
   drawBand.visible = true;
-
-  // Build the ghost wall at most once per frame: one wall over the whole part is
-  // a few ms, fine occasionally but not at raw pointer-move rates.
   const already = !!ghostQueued;
-  ghostQueued = [aWorld.clone(), hitPoint.clone()];
+  ghostQueued = [aWorld.toArray(), hitPoint.toArray()];
   if (already) return;
   requestAnimationFrame(() => {
     const q = ghostQueued;
     ghostQueued = null;
     if (!q || !drawStart || !drawActive()) return;
-    if (ghostMesh) { scene.remove(ghostMesh); ghostMesh.geometry.dispose(); ghostMesh = null; }
-    const tris = partPrintTriangles();
-    const r = drawnWall([q[0].x, q[0].y, q[0].z], [q[1].x, q[1].y, q[1].z], tris, 0);
-    if (r.ok) ghostMesh = meshFrom(r.tris, ghostMaterial);
+    const generation = previewGeneration;
+    jobs.run('preview', topology, geometryJob('preview', { a: q[0], b: q[1] })).then((reply) => {
+      if (!reply || generation !== previewGeneration || !drawStart || !drawActive()) return;
+      if (ghostMesh) { scene.remove(ghostMesh); ghostMesh.geometry.dispose(); ghostMesh = null; }
+      if (reply.built.ok) ghostMesh = meshFrom(reply.built.tris, ghostMaterial);
+    }).catch(() => { /* committed jobs report errors; a ghost never enables export */ });
   });
 }
 
-/** Commit the wall from `drawStart` to the just-clicked point, if it can build. */
+/** Store the request immediately; certify it asynchronously before export. */
 function placeSecondPoint(hitPoint) {
-  part.updateMatrixWorld();
-  const aWorld = part.localToWorld(drawStart.clone());
-  const bWorld = hitPoint.clone();
-  const tris = partPrintTriangles();
-  const r = drawnWall([aWorld.x, aWorld.y, aWorld.z],
-                      [bWorld.x, bWorld.y, bWorld.z], tris, 0);
-  if (!r.ok) {
-    drawMsg = `couldn’t place that wall: ${r.reason}`;
-    clearPreview();
-    updateReadout(lastBuilt);
-    return;
-  }
-  drawMsg = '';
   histPush();
-  drawnWalls.push({ a: drawStart.clone(), b: part.worldToLocal(bWorld.clone()) });
+  part.updateMatrixWorld();
+  drawnWalls.push({ a: drawStart.clone(), b: part.worldToLocal(hitPoint.clone()), justPlaced: true });
+  drawMsg = '';
   clearPreview();
   rebuildDrawn();
-  updateReadout(lastBuilt);
-  updateFit();
 }
 
 /**
@@ -335,26 +291,14 @@ function autoSupports() {
   return { braces, walls };
 }
 
-/** Stand a sway brace on the upright face the user clicked. One click, no second point. */
+/** One click queues a sway brace; geometry and certification run off-thread. */
 function placeSway(hit) {
-  const auto = autoSupports();
-  const standing = [...auto.braces,
-                    ...drawnWalls.filter((w) => w.kind === 'sway' && w.ok).map((w) => w.info)];
-  const r = swayAtFace(topology, lastResult, rotM3.elements, hit.faceIndex,
-                       [hit.point.x, hit.point.y, hit.point.z], swayOpts(),
-                       { braces: standing, walls: auto.walls });
-  if (!r.ok) {
-    drawMsg = `couldn’t place that brace: ${r.reason}`;
-    updateReadout(lastBuilt);
-    return;
-  }
-  drawMsg = '';
   histPush();
   part.updateMatrixWorld();
-  drawnWalls.push({ kind: 'sway', face: hit.faceIndex, a: part.worldToLocal(hit.point.clone()) });
+  drawnWalls.push({ kind: 'sway', face: hit.faceIndex,
+    a: part.worldToLocal(hit.point.clone()), justPlaced: true });
+  drawMsg = '';
   rebuildDrawn();
-  updateReadout(lastBuilt);
-  updateFit();
 }
 
 /** Show the Draw controls (hint + Clear) only while hand-placement is live,
@@ -386,7 +330,11 @@ el('draw-remove').addEventListener('click', removeSelected);
 
 export function setDrawMsg(v) { drawMsg = v; }
 /** The part turned or changed: the cached print-space triangles are stale. */
-export function markPrintTrisDirty() { printTrisDirty = true; }
+export function markPrintTrisDirty() {
+  drawGeneration++; previewGeneration++;
+  jobs.cancel('build'); jobs.cancel('preview');
+  drawBusy = drawShown() && drawnWalls.length > 0;
+}
 
 // ---- the draw pointer (app.js dispatches here while drawActive()) ----------
 
@@ -397,6 +345,8 @@ export function drawHover(ev) {
     updatePreview(hit.point);
     renderer.domElement.style.cursor = 'crosshair';
   } else {
+    previewGeneration++;
+    jobs.cancel('preview');
     drawCursor.visible = drawBand.visible = false;
     if (ghostMesh) { scene.remove(ghostMesh); ghostMesh.geometry.dispose(); ghostMesh = null; }
     renderer.domElement.style.cursor = '';

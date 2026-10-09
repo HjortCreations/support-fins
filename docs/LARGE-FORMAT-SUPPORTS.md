@@ -11,7 +11,8 @@ been physically print-validated**. The older 249 mm ASA sway-brace tests in
 
 ## Choose wall thickness
 
-1. Import and orient the part, then choose Auto, Full coverage or Draw.
+1. Import and orient the part. Draw is selected by default; choose Auto or Full
+   coverage under Setup → Placement when you want automatic support placement.
 2. Under **Walls**, enter the nozzle diameter in millimetres (0.2–3 mm).
 3. Move **Fin thickness** to 2, 4, 6 or 8 lines. The displayed thickness is
    `nozzle × 1.1 × line count`.
@@ -33,7 +34,7 @@ and committed Draw supports. Their contact tips and grip tines stay one line wid
 tines stay one layer high. Selecting a thicker wall does not scale the material's
 support gap. Foot plates have rounded ends inside their previous clearance envelope.
 
-**Browser defaults:** 0.4 mm nozzle, two lines (0.88 mm walls), rounded feet,
+**Browser defaults:** Draw placement, 0.4 mm nozzle, two lines (0.88 mm walls), rounded feet,
 Taper base, 1× base thickness, 0 mm base spread, sway off and solid walls.
 These intentionally differ from the older browser's wall and foot geometry.
 Slicer/CAD plugin dialogs do not expose these new controls yet and retain the
@@ -106,10 +107,17 @@ them. The on-screen mass estimate counts these overlaps before union, so use the
 slicer's estimate for material planning. The new reinforcement does not cut away
 an existing collision in the original support geometry.
 
-The app still uses CPU mesh calculations in a background worker. These controls
-do not add GPU computing, multiple generation workers or a native desktop wrapper.
-Complex meshes and collision checks can take time. Base fillets and physical
-validation across large printers remain future work.
+Support generation uses CPU mesh calculations in background workers. Draw's
+manual supports and previews share a persistent worker that caches the model;
+the existing automatic/pad worker handles seating and the bed pad independently.
+Export waits while supports are being regenerated or a generation error remains.
+The interface remains available during support generation; import, pose analysis,
+mesh display and export still include work on the UI thread.
+
+See the [performance report](PERFORMANCE.md) for the multi-core experiment and
+why a larger worker pool is not yet used for a single placement. Complex collision
+checks can still take time. GPU computing, a native desktop wrapper, base fillets
+and physical validation across large printers remain future work.
 
 ## Regression coverage
 

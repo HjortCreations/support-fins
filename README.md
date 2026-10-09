@@ -29,6 +29,8 @@ now you had to CAD it by hand every time.
 3. It shows you live: overhang count, how many can take a real fin, height, bed contact.
    Point at the load direction, answer one question — *does it pull apart, or does it
    lever?* — and it scores orientations for strength too.
+   Enable fins to place supports in **Draw**, the browser default. Choose **Auto**
+   or **Full coverage** under Setup → Placement for automatic placement.
 4. Export. Fins and a bed pad come baked into the STL (or 3MF).
 
 **Why you pick the rotation, not the software:** "stronger" means nothing without a load
@@ -48,6 +50,20 @@ point; see `docs/FIN-SPEC.md`), optional sway braces that tie tall parts' sides 
 the way up (auto, or click an upright side in Draw), STL, 3MF and STEP import, STL and 3MF export.
 
 Still open: physical validation of large-format profiles, and the bed pad on tilted exports.
+
+### Responsive manual placement
+
+The browser starts in **Draw** so a large model does not trigger automatic support
+placement when fins are enabled. Draw computes only seating and the bed pad until
+you place a support. Hand-placed walls, sway braces, cross reinforcement and ghost
+previews run in a persistent background worker, with cached model queries and a
+bounded queue that replaces superseded requests. Export waits for the current
+supports to finish. Worker failures are reported instead of running heavy geometry
+on the UI thread.
+
+The [performance report](docs/PERFORMANCE.md) records timings, the 1/2/4-worker
+experiment, remaining bottlenecks and the reasons for using one cached manual
+worker rather than duplicating the model across many workers on every click.
 
 ### Nozzle profiles and base reinforcement
 
@@ -85,7 +101,7 @@ their reinforcement with the original fin. Blocked ends can remain unextended;
 the status reports partial and skipped bases. Supports mounted on the part and
 curved bases are left unchanged. Existing feet and breakaway contacts are kept.
 This adds closed overlapping solids, as the existing feet do; inspect the union
-in your slicer. Fillets and multi-worker CPU generation are not implemented.
+in your slicer. Plate fillets are not implemented.
 
 **Cross bases and rounded feet:** choose **Base shape → Cross** for a perpendicular
 rib crossing the original fin at its base. The additional rib narrows toward a section

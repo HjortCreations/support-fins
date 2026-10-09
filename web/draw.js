@@ -43,22 +43,10 @@ function surfaceZsAt(tris, x, y) {
  * (bridge.stl's deck on its piers) carries coincident inner faces, and an inside/outside
  * count through them reads air as solid. */
 function surfaceHits(tris, x, y) {
-  const hits = [];
-  for (let i = 0; i < tris.length; i += 9) {
-    const ax = tris[i], ay = tris[i + 1], az = tris[i + 2];
-    const bx = tris[i + 3], by = tris[i + 4], bz = tris[i + 5];
-    const cx = tris[i + 6], cy = tris[i + 7], cz = tris[i + 8];
-    const den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
-    if (Math.abs(den) < 1e-12) continue;
-    const l1 = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / den;
-    const l2 = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / den;
-    const l3 = 1 - l1 - l2;
-    if (l1 < -1e-9 || l2 < -1e-9 || l3 < -1e-9) continue;
-    const ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx - ax, vy = cy - ay, vz = cz - az;
-    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-    hits.push([l1 * az + l2 * bz + l3 * cz, nz / (Math.hypot(nx, ny, nz) || 1)]);
-  }
-  return hits;
+  // The existing cached XY index keeps original triangle order, including ties
+  // at shared edges. Reuse it for manual placement too, rather than scanning
+  // the entire model again at every station and clearance probe.
+  return gridHitsAt(tris, x, y);
 }
 
 /**
@@ -240,7 +228,7 @@ export function drawnWall(a, b, tris, zBed = 0, opts = {}) {
   // pass measures the same profile): drawn beside a body resting on the plate, the
   // flange reached 0.4-1.1 mm into it (local issue 033). Checked before sweep writes.
   const top = (i) => line[i][2] - PROP.gap - zBed;
-  if (line.every((p, i) => top(i) >= PROP.minHeight)
+  if (line.every((_p, i) => top(i) >= PROP.minHeight)
       && (bandHitsPart(line, tris, (i) => footFor(top(i)), zBed - 0.01, () => zBed + PROP.baseH + PROP.gap)
        || bandHitsPart(line, tris, () => PROP.th / 2, zBed - 0.01, (i) => zBed + top(i) / 2))) {
     return { ok: false, reason: 'too close to the part — the wall’s foot would cut '

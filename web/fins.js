@@ -144,7 +144,7 @@ function buildFinsAndBraces(topo, result, rot, opts = {}) {
   // Sway braces are an optional ADD-ON to whatever the mode placed (sway.js): a
   // tall part still needs its overhangs held, and bracing its sides is a
   // separate job on separate faces.
-  if (!opts.sway?.on) return built;
+  if (opts.mode === 'draw' || !opts.sway?.on) return built;
   // Braces run LAST, so everything this mode placed is already on the plate: hand
   // the props' and wedges' centrelines over as things to stand clear of. Fused to
   // one of those, a brace is no longer a piece that snaps off by itself.
@@ -349,7 +349,8 @@ function buildFinsCore(topo, result, rot, opts = {}) {
   // written for -- while the readout said "rotate", which is exactly the
   // advice the printed evidence contradicts. Refuse only when the user has
   // turned the pad off.
-  const built = seating.kind === 'point' && !pad
+  // Draw needs the pad/seating result, not automatic walls that the UI discards.
+  const built = mode === 'draw' || (seating.kind === 'point' && !pad)
     ? noProps() : buildProps(topo, result, rot, opts);
   return {
     triangles: built.triangles, padTriangles: padOut, pad, mode,

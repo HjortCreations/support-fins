@@ -261,6 +261,22 @@ The profile is inspired by oliveiracelso's Dowell profile. The 1.1 multiplier an
 line-count choices follow this feature's requested sizing rule; cross reach,
 taper fractions and top clearance are design choices awaiting physical testing.
 
+## Browser placement and scheduling
+
+The browser starts in **Draw**; engine and plugin defaults remain unchanged.
+Draw builds seating and the bed pad without automatic walls or sway braces.
+Manual supports, reinforcement and ghost previews run in a persistent worker.
+It retains the model and posed triangle grid, and keeps at most one active job
+plus the newest pending job per channel. Pending committed builds take priority
+over pending previews; an already-running preview finishes before the next job.
+Superseded results are ignored. Worker failures do not trigger a synchronous
+fallback, and export cannot use an incomplete or failed current build.
+
+Surface queries use the existing XY triangle grid with the same intersection
+tests and triangle order. Placement and reinforcement retain their ordered
+collision checks. No mesh decimation or lower contact resolution is introduced.
+See [performance decisions and measurements](PERFORMANCE.md).
+
 ## Naming
 
 Slant3D says "grip fins" once. Unrelated to the *grip fin* used elsewhere in Matthew's

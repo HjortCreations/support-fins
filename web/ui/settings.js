@@ -25,11 +25,10 @@ export function setFinsVisible(v) { finsVisible = v; }
 // vertical. A user who loads a part and exports should get the support that
 // supports.
 //
-// DEFAULT IS 'auto': click "Add fins" and the tool places the supports for you
-// (tined combined fins on the grippable overhangs, plain props on the rest). Draw
-// is the by-hand path. ('prop' still exists internally -- Draw calls it for the
-// bed pad + seating verdict, and it is the geometry Auto props with.)
-export let finMode = 'auto';
+// Start with manual placement, avoiding an unsolicited Auto pass on large parts.
+// Auto and Full coverage are explicit choices. Draw only needs the bed pad and
+// seating verdict until a wall or brace is placed.
+export let finMode = 'draw';
 export function setFinMode(v) { finMode = v; }
 // FULL COVERAGE ('full', fins/fill.js) is Auto plus walls under the red Auto left
 // bare, so everything Auto offers -- the coverage slider, sway braces, per-fin
@@ -326,6 +325,8 @@ el('augment-toggle').addEventListener('click', () => {
 /** Bring the pad, tine, sway, cutout and material state in line with the controls
  *  (a reload can keep the browser's last values). Called once at startup. */
 export function initSettings() {
+  finMode = el('fin-mode').value;
+  syncCoverageUI();
   syncPrintProfile();
   syncTineGrip();
   syncPadStyle();

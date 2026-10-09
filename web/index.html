@@ -217,7 +217,8 @@
     <label class="fld">
       Placement
       <select id="fin-mode" title="Who places the support.">
-        <!-- AUTO (fins.js mode 'auto') is the default and does everything: a tined
+        <!-- DRAW is the default: large models should not start an automatic
+             placement pass until the user asks for one. AUTO does everything: a tined
              combined fin on each overhang face steep and flat enough to grip, a plain
              breakaway prop under the shallow/curved ones that can't take a fin. FULL
              COVERAGE ('full', fins/fill.js) is Auto plus walls under the red Auto left
@@ -227,7 +228,7 @@
              parts with no fin sites, which just read as broken. -->
         <option value="auto">Auto — place supports for me</option>
         <option value="full">Full coverage — every overhang</option>
-        <option value="draw">Draw — place them by hand</option>
+        <option value="draw" selected>Draw — place them by hand</option>
       </select>
     </label>
   </details>

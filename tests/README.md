@@ -203,6 +203,16 @@ perpendicular ribs with modest independent reach; arms remain visible almost to
 the full-width body's top; low contact tails cannot truncate a tall rib; obstacles
 near the top are checked; original contacts, ownership and STL/3MF output survive.
 
+**`draw_worker.test.js`** -- Draw skips discarded automatic geometry while keeping
+the same pad/seating results; latest-request scheduling, model reuse, cancellation,
+failure recovery and stale worker events; real worker output matches direct manual
+generation with closed cross reinforcement and owned triangle ranges.
+
+`prototype/performance/run.js` measures dense synthetic meshes and independent
+wall batches with 1/2/4 workers. It checks identical geometry across implementations
+and worker counts; timings are diagnostic, not pass/fail thresholds. See
+`docs/PERFORMANCE.md` for the workload and limits.
+
 These tests verify geometry, not strength or removability on a physical printer.
 The test helpers use file URLs and native filesystem paths so Windows checkouts
 in directories containing spaces run the same offline suite as Linux CI.

@@ -1,10 +1,10 @@
 /**
- * Building the supports: the request options, the Worker (with an inline
- * fallback), and turning a finished buildFins result into the fin and pad meshes
+ * Building the supports: request options, background generation, and turning
+ * a finished buildFins result into the fin and pad meshes
  * on screen. Owns the last build and the triangles the export reads.
  */
 import * as THREE from 'three';
-import { buildFins, FIN, PAD } from '../fins.js';
+import { FIN, PAD } from '../fins.js';
 import { PROP } from '../prop.js';
 import { CUT } from '../cutout.js';
 import { printDimensions } from '../print-profile.js';
@@ -15,7 +15,7 @@ import {
 } from './remove.js';
 import { updateReadout } from './readout.js';
 import {
-  drawnTris, drawnMesh, drawMaterial, drawShown, clearPreview, rebuildDrawn,
+  drawnTris, drawnMesh, drawMaterial, drawShown, clearPreview, rebuildDrawn, drawBusy, drawFailed, setDrawMsg,
 } from './walls.js';
 import { finsVisible, finMode, autoLike } from './settings.js';
 import { topology, rotM3, lastResult, updateFit } from './part.js';
@@ -65,14 +65,24 @@ export function activeAdded() {
 // DOM/three.js dependency, so it runs in a Worker instead (web/finworker.js): the
 // current fins stay on screen, greyed, while the new ones compute, and the UI
 // stays live. A generation counter drops the reply from a pose that has since
-// been superseded, and if a Worker can't be created (e.g. the page was opened
-// from file://) it falls back to building inline.
+// been superseded. If a worker fails, report it and keep export blocked until a
+// successful retry; never run heavy support generation on the UI thread.
 let finWorker;               // undefined = not tried yet, null = unavailable, else a Worker
 let finGen = 0;              // bumped per request; a reply with a stale id is ignored
 let finT0 = 0;               // start time of the in-flight build, for the readout timing
 let lastOpts = null;
 let finSpinnerTimer = null;  // shows the spinner only if a build runs past ~1s
 let finBusy = false;         // a worker build is outstanding (used to supersede it)
+let finFailed = false;
+export const geometryPending = () => finsVisible && (finBusy || finFailed || drawBusy || drawFailed);
+
+function generationFailed(error) {
+  finBusy = false; finFailed = true; clearSpinner();
+  setDrawMsg(`Support generation failed: ${error}. Try again or reload.`);
+  updateReadout(lastBuilt);
+  el('s-fins').textContent = 'support generation failed';
+  el('s-fin-note').textContent = `Support generation failed: ${error}. Try again or reload.`;
+}
 
 // Reveal the spinner only for builds that actually run long, so a sub-second
 // rebuild never flashes it. Cleared the moment the build lands (applyBuilt).
@@ -90,8 +100,8 @@ function clearSpinner() {
   el('spinner').classList.remove('show');
 }
 
-function finOpts() {
-  return { mode: finMode === 'draw' ? 'prop' : finMode,
+export function finOpts() {
+  return { mode: finMode,
            bedPad: el('bed-pad').value !== 'off',
            tines: el('tines').checked,
            tineDensity: el('tine-density').valueAsNumber / 100,
@@ -132,25 +142,21 @@ function makeFinWorker() {
   w.onmessage = (e) => {
     if (e.data.id !== finGen) return;              // a newer pose already superseded this build
     finBusy = false;
-    if (e.data.error) {                            // worker failed -- build inline so support still appears
-      applyBuilt(buildFins(topology, lastResult, rotM3.elements, lastOpts));
-      return;
-    }
+    if (e.data.error) { generationFailed(e.data.error); return; }
     applyBuilt(e.data.built);
   };
   // A worker-level error must not leave the UI wedged (spinner up, fins greyed):
-  // drop to inline for good, and rebuild the request it dropped inline now --
-  // otherwise the panel sits on "generating supports…" until the next change.
+  // report the failure. The next settings change can start a new worker.
   w.onerror = () => {
-    const dropped = finBusy;
-    finWorker = null; finBusy = false; clearSpinner();
-    if (dropped) refreshFins();
+    w.terminate();
+    finWorker = undefined; finBusy = false; clearSpinner();
+    generationFailed('the background worker stopped');
   };
   return w;
 }
 
 function getFinWorker() {
-  if (finWorker === undefined) {
+  if (finWorker == null) {
     try { finWorker = makeFinWorker(); } catch { finWorker = null; }
   }
   return finWorker;
@@ -168,6 +174,7 @@ function supersedeBuild() {
 
 export function refreshFins() {
   if (!finsVisible || !lastResult || !topology) {
+    finFailed = false;
     supersedeBuild();                  // no build wanted now: drop any in-flight one so it can't re-add fins
     clearSpinner();
     for (const m of [finMesh, padMesh]) { if (m) { scene.remove(m); m.geometry.dispose(); } }
@@ -183,16 +190,11 @@ export function refreshFins() {
   }
 
   finT0 = performance.now();
+  finFailed = false;
   lastOpts = finOpts();
   supersedeBuild();                    // discard any older in-flight pose before starting this one
   const worker = getFinWorker();
-  if (!worker) {                       // no worker available: build inline (old behaviour)
-    for (const m of [finMesh, padMesh]) { if (m) { scene.remove(m); m.geometry.dispose(); } }
-    finMesh = padMesh = null;
-    finTris = padTris = [];
-    applyBuilt(buildFins(topology, lastResult, rotM3.elements, lastOpts));
-    return;
-  }
+  if (!worker) { generationFailed('a background worker could not start'); return; }
 
   // Leave the current fins on screen (greyed) until the fresh build lands, so the
   // viewport never blanks mid-recalc. markFinsStale also shows "generating supports…";
@@ -207,28 +209,22 @@ export function refreshFins() {
   // once something has queried the part on the main thread -- which Suggest
   // orientation does -- so before that postMessage(topology) worked and after it
   // threw DataCloneError, leaving the build wedged. Send a shallow copy without
-  // the cache (the worker rebuilds its own grid), and if a clone ever fails
-  // anyway, build inline so the UI can never get stuck waiting on a reply.
+  // the cache (the worker rebuilds its own grid). Report clone failures instead
+  // of leaving a pending build or doing the work on the UI thread.
   const topoMsg = { ...topology };
   delete topoMsg._insideGrid;
   try {
     worker.postMessage({ id: finGen, topology: topoMsg, result: lastResult, rot: rotM3.elements, opts: lastOpts });
   } catch (err) {
-    console.warn('support worker postMessage failed; building inline', err);
-    finBusy = false;
-    for (const m of [finMesh, padMesh]) { if (m) { scene.remove(m); m.geometry.dispose(); } }
-    finMesh = padMesh = null;
-    finTris = padTris = [];
-    applyBuilt(buildFins(topology, lastResult, rotM3.elements, lastOpts));
+    generationFailed(String(err));
   }
 }
 
-// Turn a finished buildFins result into meshes + readout. Shared by the worker
-// reply and the inline fallback. buildFins runs in BOTH modes: in Suggest it
+// Turn a finished worker result into meshes + readout. In Suggest buildFins
 // places the walls; in Draw it is called only for the bed pad + seating verdict
 // (a tilted part rests on an edge and needs a pad however its walls are placed,
-// and that logic lives in fins/pad.js + fins/seating.js), so Draw ignores the
-// suggested walls and shows the hand-drawn ones instead.
+// and that logic lives in fins/pad.js + fins/seating.js). Draw does not generate
+// automatic walls; it shows the hand-drawn ones instead.
 function applyBuilt(built) {
   finBusy = false;
   clearSpinner();
