@@ -329,3 +329,12 @@ try shorter reaches or omissions; actual/requested reach and skipped/limited
 status are reported. Added rib/rounded-foot triangles stay owned by their fin.
 Metre-high 2/4/6/8-line sections are tested through STL and 3MF round trips,
 including the last rib layers. No new physical print validation is claimed.
+
+## Optional full Sway depth percentage
+
+The browser's Full brace depth checkbox passes `uncappedDepth` in Sway options
+(default checked). It removes only the original 60 mm depth cap; the selected
+5–50% range, minimum depth, 4 mm top and collision/grip rules stay intact.
+A 999 mm rib at 15% has about 150 mm depth. Engine/plugin callers retain the cap
+unless explicitly opting in. Larger depths use more plate space and material;
+this supports the tall-print stability goal without claiming new print validation.

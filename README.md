@@ -73,6 +73,14 @@ geometry. See [the nozzle guide](docs/NOZZLE-PROFILES.md) for dimensions,
 clearance limits and export checks. Nozzle profiles are geometry-tested;
 the new large-nozzle profiles have not been physically print-validated.
 
+### Brace depth on large prints
+
+**Full brace depth** uses the whole selected percentage instead of stopping at
+60 mm. At 1 m and 15%, the base depth is about 150 mm. Switch it off for the
+original cap. Clearances and plate-space warnings still apply; the browser
+enables this, while engine/plugin callers explicitly opt in with
+`sway.uncappedDepth: true`. A larger base does not replace grip tines.
+
 ### Full-height Cross reinforcement
 
 **Base shape → Cross** adds a perpendicular rib, keeping at least the full wall

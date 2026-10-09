@@ -115,6 +115,7 @@ function settings(opts = {}) {
     wallHalf: Number.isFinite(opts.wallHalf) && opts.wallHalf > 0 ? opts.wallHalf : SWAY.wallHalf,
     footHalf: Number.isFinite(opts.footHalf) && opts.footHalf > 0 ? opts.footHalf : SWAY.footHalf,
     roundFeet: opts.roundFeet === true,
+    uncappedDepth: opts.uncappedDepth === true,
     // Auto refuses a brace that would stand a long way up before its first tine;
     // a brace placed BY HAND is built anyway and reports the stilt instead. The
     // tool suggests, the person decides -- the same split as the rest of the app.
@@ -284,7 +285,7 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
     const a = fr.sOf(patchPoint(p, wIn, uc, tAtZ(p, wIn, 0)));
     const b = fr.sOf(patchPoint(p, wIn, uc, tAtZ(p, wIn, 1)));
     sIn0 = a + S.baseOffset; sInSlope = b - a - S.baseOffset / H;
-    D0 = Math.max(SWAY.minDepth, Math.min(SWAY.maxDepth, S.reach * H));
+    D0 = Math.max(SWAY.minDepth, S.uncappedDepth ? S.reach * H : Math.min(SWAY.maxDepth, S.reach * H));
     if (S.manualFit) {
       D0 += S.baseOffset;
       // A steep outward-facing wing needs more plate reach to support its outer edge.

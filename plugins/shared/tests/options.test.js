@@ -38,6 +38,7 @@ const SITE_ONLY_CHOICES = { padStyle: ['custom'] };
 // Every site control that is NOT in options.json, and why. A new control on the site
 // fails the test below until it is added to the schema or listed here.
 const SITE_EXCLUDED = {
+  'full-brace-depth': 'browser optional uncapped Sway percentage; plugins retain the legacy cap',
   'base-style': 'browser base reinforcement', 'cross-reach': 'browser cross reinforcement',
   'base-thickness': 'browser base reinforcement', 'base-spread': 'browser base reinforcement',
   'sway-fit': 'explicit browser Draw fitting tool; stored on each request',

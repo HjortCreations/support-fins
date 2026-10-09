@@ -112,7 +112,7 @@ export function finOpts() {
  *  material's number as an option instead of reading FIN/PROP itself. */
 export function swayOpts() {
   const num = (id, d) => (Number.isFinite(el(id).valueAsNumber) ? el(id).valueAsNumber : d);
-  return { ...printDimensions(FIN.nozzle, FIN.wallLines), roundFeet: FIN.roundFeet, gripFrom: num('sway-from', 0),
+  return { ...printDimensions(FIN.nozzle, FIN.wallLines), roundFeet: FIN.roundFeet, uncappedDepth: el('full-brace-depth').checked, gripFrom: num('sway-from', 0),
            tineSpacing: num('sway-spacing', 6),
            reach: num('sway-depth', 15) / 100,
            gap: PROP.gap,
