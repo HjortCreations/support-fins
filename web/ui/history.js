@@ -93,9 +93,10 @@ export function commitGesture(s, changed) {
 }
 
 /** Capture state BEFORE a mutation. A fresh action invalidates the redo stack. */
-export function histPush() {
+export function histPush(pendingPlacement = false) {
   if (!part) return;
   const state = snapshot(), token = { state, redoBefore: [...redoStack] };
+  if (pendingPlacement) state.placementRedo = token.redoBefore;
   undoStack.push(state);
   if (undoStack.length > 100) undoStack.shift();
   redoStack.length = 0;

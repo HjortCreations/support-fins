@@ -273,7 +273,7 @@ function updatePreview(hitPoint) {
 
 /** Store the request immediately; certify it asynchronously before export. */
 function placeSecondPoint(hitPoint) {
-  const pendingHistory = histPush();
+  const pendingHistory = histPush(true);
   part.updateMatrixWorld();
   drawnWalls.push({ a: drawStart.clone(), b: part.worldToLocal(hitPoint.clone()),
     justPlaced: true, pendingHistory, historyKey: Symbol() });
@@ -310,7 +310,7 @@ function autoSupports() {
 
 /** One click queues a sway brace; geometry and certification run off-thread. */
 function placeSway(hit) {
-  const pendingHistory = histPush();
+  const pendingHistory = histPush(true);
   part.updateMatrixWorld();
   drawnWalls.push({ kind: 'sway', face: hit.faceIndex,
     a: part.worldToLocal(hit.point.clone()),
