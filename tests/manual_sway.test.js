@@ -4,7 +4,7 @@ import { LatestWorker } from '../web/worker-queue.js';
 import { printDimensions } from '../web/print-profile.js';
 import { block, blockTopo, buildTopology, tiltedBlockTopo, analyze, assert, isClosed, isOriented, insideCount } from './_util.js';
 const ID = [1, 0, 0, 0, 1, 0, 0, 0, 1];
-const opts = { ...printDimensions(1.6, 4), tines: true, layerHeight: 0.6, tineSpacing: 6 };
+const opts = { ...printDimensions(1.6, 4), tines: true, layerHeight: 0.6, tineSpacing: 1, fitFeature: true };
 const topoOf = (...parts) => {
   const pos = new Float32Array(parts.flatMap((p) => [...p]));
   return buildTopology({ getAttribute: (k) => k === 'position' ? { array: pos } : null });
@@ -25,7 +25,7 @@ Deno.test('manual sway: a small wing over a broader body gets a larger plate-con
   const r = swayAtFace(topo, result, ID, face, [40, 0, 80], opts);
   assert(r.ok, r.reason);
   assert(r.fitted && r.baseOffset > 10, 'the fin did not clear the wider body below');
-  assert(r.tines > 0 && r.limitedGrip, 'small-wing contact was not reported');
+  assert(r.tines >= 3 && !r.limitedGrip, 'fitted fin undercut the three-tine floor');
   assert(r.height >= 80.9, 'fin was truncated below the wing');
   assert(isClosed(r.tris) && isOriented(r.tris), 'fitted fin is not a closed outward solid');
   assert(Math.min(...r.tris.map((p) => p[2])) === 0, 'fin does not reach the plate');
@@ -48,7 +48,7 @@ Deno.test('manual sway: clicking the wing top uses its nearest side edge, not a 
 Deno.test('manual sway: a small low face can be chosen even though Auto does not brace it', () => {
   const topo = blockTopo(-10, 10, -10, 10, 0, 6), res = analyze(topo, 45, ID);
   const face = faceAt(topo, 0, 1, 10);
-  const r = swayAtFace(topo, res, ID, face, [10, 0, 4], { tines: true, layerHeight: 0.2 });
+  const r = swayAtFace(topo, res, ID, face, [10, 0, 4], { tines: true, layerHeight: 0.2, tineSpacing: 1, fitFeature: true });
   assert(r.ok && r.fitted && r.tines > 0, r.reason);
   assert(buildSwayBraces(topo, res, ID, { tines: true }).count === 0, 'changed Auto rules');
 });
@@ -77,7 +77,7 @@ Deno.test('manual sway: worker exports the fitted wing fin with owned cross rein
   const queue = new LatestWorker(new URL('../web/drawworker.js', import.meta.url));
   try {
     const reply = await queue.run('build', topo, { kind: 'build', rot: ID,
-      result: { offset: { x: 0, y: 0, z: 0 } }, requests: [{ kind: 'sway', face, a: [40, 0, 80] }],
+      result: { offset: { x: 0, y: 0, z: 0 } }, requests: [{ kind: 'sway', face, fitFeature: true, a: [40, 0, 80] }],
       options: { sway: opts, draw: {}, tunables: { nozzle: 1.6, wallLines: 4,
         baseStyle: 'cross', baseThickness: 2, crossReach: 20 } } });
     const item = reply.built.items[0];
@@ -92,4 +92,31 @@ Deno.test('manual patches: a small seed keeps the selected face and original pla
   const found = manualPatchAtFace(topo, ID, { x: 0, y: 0, z: 0 }, face);
   assert(found.patch?.faces.includes(face), 'small selected face was discarded');
   assert(found.patch.flatness <= 1.2 + 1e-5, 'manual growth escaped the seed plane');
+});
+
+Deno.test('manual sway: one- and two-tine wing contacts refuse rather than report limited grip', () => {
+  const topo = wing(), face = faceAt(topo, 0, 1, 40, 78);
+  for (const tineSpacing of [6, 2]) {
+    const r = swayAtFace(topo, { offset: { x: 0, y: 0, z: 0 } }, ID,
+      face, [40, 0, 80], { ...opts, tineSpacing });
+    assert(!r.ok && /at least 3/.test(r.reason), `weak fin accepted: ${r.reason}`);
+  }
+});
+
+Deno.test('manual sway: fitting a small feature requires explicit opt-in', () => {
+  const topo = wing(), face = faceAt(topo, 0, 1, 40, 78);
+  const r = swayAtFace(topo, { offset: { x: 0, y: 0, z: 0 } }, ID,
+    face, [40, 0, 80], { ...opts, fitFeature: false });
+  assert(!r.ok && /Fit feature/.test(r.reason), 'ordinary tool silently fitted the wing');
+});
+
+Deno.test('manual sway: a valid ordinary brace shortened by a ledge stays ordinary', () => {
+  const topo = topoOf(block(-20, 20, -15, 15, 0, 150), block(-25, 25, -30, -15, 80, 85));
+  const face = faceAt(topo, 1, -1, -15);
+  for (const fitFeature of [false, true]) {
+    const r = swayAtFace(topo, { offset: { x: 0, y: 0, z: 0 } }, ID,
+      face, [0, -15, 130], { tines: true, layerHeight: 0.2, fitFeature });
+    assert(r.ok && r.height < 80 && r.tines >= 3, r.reason);
+    assert(!r.fitted && !r.baseOffset, 'valid shortened brace entered the wide fitted search');
+  }
 });

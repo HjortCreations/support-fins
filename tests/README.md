@@ -21,7 +21,8 @@ legacy geometry in the same engine; round-flange joints overlap both neighbours
 without widening the checked contour; Draw reinforcement uses explicit floor stations.
 
 **`manual_sway.test.js`** -- small-wing fits above a wider body, top-to-side-edge
-contact, small low faces, sloping faces, insufficient grip-layer refusals, brace
+contact, explicit fitting, ordinary shortened braces, small low faces, sloping faces,
+three-tine minimum refusals, brace
 collision protection and worker ownership/export geometry with Cross reinforcement.
 Auto's small-part exclusion remains in force.
 

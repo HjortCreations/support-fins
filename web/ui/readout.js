@@ -256,7 +256,6 @@ function updateDrawReadout(built, ms) {
     const i = w.info;
     if (i.baseOffset > 0) lead.push(`fin base enlarged: ${+i.baseOffset.toFixed(1)} mm outward to clear the model below`);
     if (i.edgeMove > 0.5) lead.push(`fin placed at the feature’s side edge (${+i.edgeMove.toFixed(1)} mm from the click)`);
-    if (i.limitedGrip) lead.push(`small feature: ${i.tines} grip tine${i.tines === 1 ? '' : 's'}; less contact than a normal sway brace`);
   }
   if (bad && !drawBusy) {
     const one = drawnWalls.find((w) => !w.ok);

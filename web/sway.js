@@ -382,10 +382,10 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
     }
     // A tall rib tied on at a handful of points still lets the part wave about
     // between them, so the grip has to cover a real share of the height too.
-    const wanted = S.manualFit ? 1 : Math.max(SWAY.minTines,
+    const wanted = S.manualFit ? SWAY.minTines : Math.max(SWAY.minTines,
       Math.floor(SWAY.minGripShare * (zEnd - zStart) / S.spacing));
     if (tines < wanted) {
-      return { ok: false, reason: 'too little of this face lines up with the brace for its tines to grip — try a flatter part of the side' };
+      return { ok: false, reason: `only ${tines} printable grip tines fit here; at least ${wanted} are required — try a taller contact or closer tine spacing` };
     }
     // Everything below the lowest tine is a lone wall holding nothing, and held by
     // nothing. Past this much of it the brace is its own liability, so refuse rather
@@ -414,8 +414,7 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
   }
   // `stilt`: how far it stands holding nothing before its first tine. Auto keeps this
   // small by refusing; a hand-placed brace reports it so the readout can say so.
-  const manual = S.manualFit ? { fitted: true, baseOffset: S.baseOffset,
-    limitedGrip: S.tines && tines < SWAY.minTines } : {};
+  const manual = S.manualFit ? { fitted: true, baseOffset: S.baseOffset } : {};
   return { ok: true, tris: out, tines, height: H, depth: D0, th, stilt, foot, ...manual,
     halfW: footHalfW, wallHalf: S.wallHalf, levels };
 }
@@ -665,7 +664,7 @@ export function swayAtFace(topo, result, rot, faceIndex, point, opts = {}, avoid
     const r = buildSwayRib(p, uc, partTris, topo, rot, result.offset, opts);
     if (r.ok && swayClashes(r, braces)) { hitBrace = true; continue; }
     if (r.ok && swayClashesWall(r, walls)) { hitWall = true; continue; }
-    if (r.ok && r.height >= point[2] - SWAY.topClear) return r;
+    if (r.ok) return r;
     last = r;
   }
   // Manual intent is explicit: fit a fin to a small/sloping feature, or its nearest
@@ -673,6 +672,8 @@ export function swayAtFace(topo, result, rot, faceIndex, point, opts = {}, avoid
   if (hitBrace || hitWall) return { ok: false, reason: hitBrace
     ? 'it would run into another brace (on the facing wall, or right beside it) — click a spot staggered from it'
     : 'a support already stands there, and the two would fuse into one piece — click a spot clear of it' };
+  if (!opts.fitFeature) return last ?? { ok: false,
+    reason: 'no ordinary brace fits this face — enable Fit feature for a small or sloping contact' };
   const seed = fittedPatch(faceIndex);
   const sites = seed.patch ? [{ p: seed.patch, point, moved: 0 }] : [];
   const edges = seed.boundary.map((face) => {

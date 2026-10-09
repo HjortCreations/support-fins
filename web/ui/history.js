@@ -5,6 +5,7 @@
  * (walls.js, strength.js, settings.js, pose.js); history never assigns to them.
  */
 import { el } from './dom.js';
+import { retractPlacement } from '../placement-history.js';
 import { controls } from './scene.js';
 import { removedSigs, restoreRemovals, syncRemoveUI } from './remove.js';
 import { loadDir, replaceLoadDir, updateLoadArrowMesh, syncLoadUI } from './strength.js';
@@ -33,7 +34,7 @@ let redoStack = [];
 // the printer, saved across visits, not an edit to this part.
 const FORM_IDS = ['material', 'thr', 'tines', 'tine-density', 'layer-height', 'gap',
   'bed-pad', 'pad-h', 'pad-gap', 'pad-grip', 'pad-margin', 'sway', 'sway-from',
-  'sway-spacing', 'sway-depth', 'nozzle', 'wall-lines', 'base-style', 'base-thickness',
+  'sway-spacing', 'sway-depth', 'sway-fit', 'nozzle', 'wall-lines', 'base-style', 'base-thickness',
   'base-spread', 'cross-reach', 'cutout', 'coverage', 'plate-only', 'highlight-small', 'show-layers',
   'show-rings', 'nav-preset'];
 const readForm = () => Object.fromEntries(FORM_IDS.map((id) => {
@@ -49,7 +50,8 @@ function snapshot() {
   const q = part.quaternion;
   return {
     quat: [q.x, q.y, q.z, q.w],
-    walls: drawnWalls.map((w) => ({ kind: w.kind, face: w.face, a: w.a.clone(), b: w.b?.clone() })),
+    walls: drawnWalls.map((w) => ({ kind: w.kind, face: w.face, fitFeature: w.fitFeature,
+      historyKey: w.historyKey ??= Symbol(), a: w.a.clone(), b: w.b?.clone() })),
     load: loadDir ? loadDir.clone() : null,
     finMode, finsVisible, drawAugment,
     removedSigs: [...removedSigs],
@@ -89,9 +91,17 @@ export function commitGesture(s, changed) {
 /** Capture state BEFORE a mutation. A fresh action invalidates the redo stack. */
 export function histPush() {
   if (!part) return;
-  undoStack.push(snapshot());
+  const state = snapshot(), token = { state, redoBefore: [...redoStack] };
+  undoStack.push(state);
   if (undoStack.length > 100) undoStack.shift();
   redoStack.length = 0;
+  syncHistButtons();
+  return token;
+}
+
+/** Retract precisely the failed request, preserving later edits and their order. */
+export function discardPlacementHistory(token, historyKey) {
+  retractPlacement(undoStack, redoStack, token, historyKey);
   syncHistButtons();
 }
 
@@ -116,7 +126,8 @@ function restoreForm(form) {
 
 function restoreState(s) {
   part.quaternion.set(s.quat[0], s.quat[1], s.quat[2], s.quat[3]);
-  setDrawnWalls(s.walls.map((w) => ({ kind: w.kind, face: w.face, a: w.a.clone(), b: w.b?.clone(),
+  setDrawnWalls(s.walls.map((w) => ({ kind: w.kind, face: w.face, fitFeature: w.fitFeature,
+                                       historyKey: w.historyKey, a: w.a.clone(), b: w.b?.clone(),
                                        ok: false, info: null })));
   replaceLoadDir(s.load ? s.load.clone() : null);
   restoreRemovals(s.removedSigs);

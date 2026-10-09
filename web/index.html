@@ -330,7 +330,7 @@
        costs one line. -->
   <details class="sec" data-sec="sway">
     <summary>
-      <label data-i18n-title class="check sec-title" title="Brace tall parts with tapered fins and grip tines. Auto chooses upright sides. In Draw, click a feature once; small or sloping surfaces can use a fitted fin with a larger base.">
+      <label data-i18n-title class="check sec-title" title="Brace tall parts with tapered fins and grip tines. Auto chooses upright sides. In Draw, click an upright side once, or two points across an overhang to draw a wall.">
         <input type="checkbox" id="sway"><span data-i18n="Sway braces">Sway braces</span> <span class="mut" data-i18n="tall parts">tall parts</span>
       </label>
       <span class="sec-sum" id="sum-sway"></span>
@@ -346,6 +346,9 @@
     <label class="fld row" id="sway-depth-fld" title="How far the brace reaches out at the bed, as a share of its height. Deeper = stiffer, more plastic. Default 15%.">
       <span><span data-i18n="Brace depth">Brace depth</span> <span class="mut" data-i18n="% of height">% of height</span></span>
       <input type="number" id="sway-depth" min="5" max="50" step="1" value="15">
+    </label>
+    <label class="fld check" id="sway-fit-fld" title="Draw only: one click fits a fin to a feature or its nearest side edge. Its base may grow outward. At least three grip tines must fit.">
+      <input type="checkbox" id="sway-fit"><span data-i18n="Fit feature">Fit feature</span>
     </label>
   </details>
 

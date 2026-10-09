@@ -188,6 +188,7 @@ function syncSway() {
   el('sway-from-fld').hidden = !on || !el('tines').checked;
   el('sway-spacing-fld').hidden = !on || !el('tines').checked;
   el('sway-depth-fld').hidden = !on;
+  el('sway-fit-fld').hidden = !on;
   syncDrawControls();
   syncSectionSums();
 }
@@ -200,6 +201,7 @@ el('sway').addEventListener('change', () => {
   refreshFins();
 });
 el('tines').addEventListener('change', syncSway);
+el('sway-fit').addEventListener('change', () => { clearPreview(); syncDrawControls(); });
 for (const id of ['sway-from', 'sway-spacing', 'sway-depth']) {
   el(id).addEventListener('input', () => debouncedRefresh());
 }

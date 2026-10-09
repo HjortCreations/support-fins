@@ -7,11 +7,12 @@ import { t } from './i18n.js';
  */
 import * as THREE from 'three';
 import { LatestWorker } from '../worker-queue.js';
+import { faceIsUpright } from '../sway.js';
 import { el } from './dom.js';
 import { setBuildPending } from './build-status.js';
 import { viewport, renderer, scene, camera, meshFrom, raycaster, pointer } from './scene.js';
 import { removedIds } from './remove.js';
-import { histPush } from './history.js';
+import { histPush, discardPlacementHistory } from './history.js';
 import { updateReadout } from './readout.js';
 import { pickFace } from './pose.js';
 import { part, topology, rotM3, lastResult, updateFit } from './part.js';
@@ -135,7 +136,7 @@ export function rebuildDrawn() {
   const started = performance.now();
   const snapshot = [...drawnWalls];
   part.updateMatrixWorld();
-  const requests = snapshot.map((w) => ({ kind: w.kind, face: w.face,
+  const requests = snapshot.map((w) => ({ kind: w.kind, face: w.face, fitFeature: w.fitFeature,
     a: part.localToWorld(w.a.clone()).toArray(),
     b: w.b ? part.localToWorld(w.b.clone()).toArray() : undefined }));
   const job = geometryJob('build', { requests, avoid: autoSupports(),
@@ -148,10 +149,12 @@ export function rebuildDrawn() {
     snapshot.forEach((w, i) => {
       Object.assign(w, reply.built.items[i]);
       if (w.justPlaced && !w.ok) {
+        discardPlacementHistory(w.pendingHistory, w.historyKey);
         failedNew.push(w);
         drawMsg = `couldn't place that support: ${w.info.reason}`;
       }
       delete w.justPlaced;
+      delete w.pendingHistory;
     });
     drawnWalls = drawnWalls.filter((w) => !failedNew.includes(w));
     if (drawnMesh) { scene.remove(drawnMesh); drawnMesh.geometry.dispose(); }
@@ -272,9 +275,10 @@ function updatePreview(hitPoint) {
 
 /** Store the request immediately; certify it asynchronously before export. */
 function placeSecondPoint(hitPoint) {
-  histPush();
+  const pendingHistory = histPush();
   part.updateMatrixWorld();
-  drawnWalls.push({ a: drawStart.clone(), b: part.worldToLocal(hitPoint.clone()), justPlaced: true });
+  drawnWalls.push({ a: drawStart.clone(), b: part.worldToLocal(hitPoint.clone()),
+    justPlaced: true, pendingHistory, historyKey: Symbol() });
   drawMsg = '';
   clearPreview();
   rebuildDrawn();
@@ -308,10 +312,11 @@ function autoSupports() {
 
 /** One click queues a sway brace; geometry and certification run off-thread. */
 function placeSway(hit) {
-  histPush();
+  const pendingHistory = histPush();
   part.updateMatrixWorld();
   drawnWalls.push({ kind: 'sway', face: hit.faceIndex,
-    a: part.worldToLocal(hit.point.clone()), justPlaced: true });
+    a: part.worldToLocal(hit.point.clone()), fitFeature: el('sway-fit').checked,
+    justPlaced: true, pendingHistory, historyKey: Symbol() });
   drawMsg = '';
   rebuildDrawn();
 }
@@ -322,7 +327,9 @@ export function syncDrawControls() {
   el('draw-controls').hidden = !drawShown();
   el('draw-hint').hidden = !drawActive();
   el('draw-hint').textContent = el('sway').checked
-    ? t('Click a feature once to place a stabilizing fin. Small or sloping surfaces use a fitted fin or their nearest side edge. Turn Sway braces off to draw a wall with two points. Esc or right-click cancels.')
+    ? el('sway-fit').checked
+      ? t('Click a feature once to fit a stabilizing fin. At least three grip tines must fit. Turn Fit feature off to draw ordinary walls and braces. Esc or right-click cancels.')
+      : t('Click an upright side once for a sway brace, or two points across an overhang for a wall. Esc or right-click cancels.')
     : t('Click two points across an overhang — straight onto the red faces — to lay a breakaway wall along that line. Esc or right-click cancels.');
 }
 
@@ -383,9 +390,10 @@ export function drawClick(e) {
   const hit = pickFace(e);
   if (!hit) return;
   if (selectedWall) { selectedWall = null; syncSelection(); }
-  // Sway requests a one-click fin on the chosen feature; the worker fits its route.
-  // Two-point walls are available with Sway switched off.
-  if (!drawStart && el('sway').checked) {
+  // Ordinary Draw keeps the upright-side/overhang split. Fitting is explicit and
+  // stored on the request, so changing tools does not reinterpret existing fins.
+  if (!drawStart && el('sway').checked && (el('sway-fit').checked
+      || faceIsUpright(topology, rotM3.elements, hit.faceIndex))) {
     placeSway(hit);
     return;
   }

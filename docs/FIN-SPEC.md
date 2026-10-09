@@ -213,7 +213,7 @@ over 7 layers. The printed numbers above still stand.
 | stilt limit (**auto only**) | auto won't stand a rib more than **40 mm**, or more than **40%** of its height, below its first tine, measured from the plate or from "Brace grip from" if that is higher. A brace placed **by hand builds anyway** and the readout says how far it stands before gripping | under its lowest grip a brace holds nothing and nothing holds it: it prints as a lone wall, free to wobble beside a part at its most delicate. So auto avoids it — but the human picks the pose and can see what the software can't, and this is the same suggest-don't-decide split as the rest of the tool |
 | clash | ≥ 1 mm of air from another brace (compared at matching heights) and from any prop wall or wedge (compared at the bed, where both are widest) | two supports fused into one piece no longer break away in pieces |
 | auto placement | up to 4 faces with bearings ≥ 60° apart, a rib per ~100 mm of face width, at the face's **tallest** columns | holds both axes; a rib at a gable's low end braces the half that wasn't moving |
-| manual | Draw with Sway enabled: one click on a feature; click a placed support to select it, Delete / "Remove selected" to take it out | small/sloping features use the fitted path described below |
+| manual | Draw: upright side → ordinary brace; other faces → two-point wall; Fit feature explicitly opts into one-click fitting; click a placed support to select it, Delete / "Remove selected" to take it out | small/sloping features use the fitted path described below |
 
 ### Manual feature fitting
 
@@ -231,13 +231,18 @@ outward-growing edges are limited to 45 degrees. Part/foot collision tests and
 other-support clearance remain in force; a clash with an existing brace does not
 redirect placement onto an unrelated face.
 
-Manual fitting reaches the feature top without the original 1 mm top clearance,
-and uses layer-aligned grip rows. It requires at least one printable tine when
-Tines is enabled, rather than Auto's three-tine/30% rule. This permits small wings
-but supplies less contact, explicitly reported as `limitedGrip`. The long stilt
-below a high wing is reported too. Larger ribs cannot compensate for insufficient
-contact area. The original Auto thresholds and successful ordinary-brace geometry
-remain unchanged; these fitted shapes have not been physically print-validated.
+Manual fitting is stored per request and only enabled by the explicit **Fit
+feature** tool. Ordinary Draw retains its upright-side/two-point-wall split.
+A valid ordinary brace shortened by a ledge is returned before the fitted search,
+even if it stops below the click.
+
+Manual fitting reaches the feature top without the original 1 mm top clearance
+and uses layer-aligned grip rows. With Tines enabled, it requires at least
+`SWAY.minTines` (three) printable tines; one or two are refused with the actual
+count and required minimum. Closer tine spacing can permit a small contact,
+but a larger rib cannot compensate for insufficient contact area. The long stilt
+below a high wing is reported. Auto's three-tine/30% rule stays unchanged;
+these fitted shapes have not been physically print-validated.
 
 ## Nozzle profiles and base reinforcement
 

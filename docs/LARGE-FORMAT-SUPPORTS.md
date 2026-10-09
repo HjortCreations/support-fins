@@ -98,26 +98,25 @@ four lines (7.04 mm walls), 0.6 mm layers, sway braces at 15% depth, Cross shape
 ## Brace sides and small features
 
 Enable **Sway braces (tall parts)** to tie upright faces to a rib using tines along
-their height. Auto picks suitable upright sides. In Draw with Sway enabled, click
-a feature once to place a fin, including a small wing or sloping side. Turn Sway
-off to draw ordinary walls with two points. **Brace depth** is a percentage of
-height and is separate from Cross reach.
+their height. Auto picks suitable upright sides. In ordinary Draw with Sway
+on, click an upright side once for a brace or two points across an overhang for a
+wall. Enable **Fit feature** explicitly to fit a small wing or sloping side with
+one click. This choice is stored on each fin; switching tools does not change
+existing fins or remove Auto's braces. **Brace depth** is a percentage of height,
+separate from Cross reach.
 
-Manual placement first tries the ordinary brace. If that cannot reach the clicked
-feature, it fits a fin to the selected surface. For a top/underside or steep face,
-it can use a nearby side edge and reports the distance from your click. When the
-model underneath blocks the fin, it tries progressively larger outward base
-offsets (up to 256 mm), keeping the contact at the feature. The readout shows the
-extra offset; it is separate from Base spread and Cross reach. The fin still has
-to clear the model, other fins and their feet, and keep printable slopes.
+Manual placement first tries the ordinary brace. A valid brace shortened by a
+ledge remains at that shorter height. Only when no ordinary brace builds does
+Fit feature search the selected surface or, for a roof/underside, a nearby side
+edge. A blocked plate route tries progressively larger outward base offsets
+(up to 256 mm). The readout reports the offset and any moved contact. Model,
+other-fin and foot clearances and printable slopes still apply.
 
-A small feature may provide only one grip tine. Manual fitting accepts that and
-reports **less contact than a normal sway brace**; Auto retains its three-tine
-and coverage requirements. A thicker or larger fin does not create more contact
-area on the wing. Consider several fins or another contact location when grip is
-limited. If no printable contact fits the selected layer height, placement still
-fails with a contact-specific reason. These manual fits are geometry-tested,
-not physically print-validated.
+With Tines enabled, at least **three** printable grip tines must fit. One or two
+are refused with the count and required minimum. Try closer Brace tine spacing,
+another contact or a different pose. A larger rib cannot create contact area on
+a tiny wing. Auto retains its three-tine/coverage rules. These fitted shapes are
+geometry-tested, not physically print-validated.
 
 With a nozzle profile, sway ribs use `max(selected wall thickness,
 min(2.4, 1.2 + 0.004 × rib height))` mm. The print-tested height-based thickness

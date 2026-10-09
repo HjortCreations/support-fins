@@ -13,7 +13,8 @@ export function buildDrawn(topo, result, rot, requests, options, avoid = {}, ext
   const braces = [...(avoid.braces ?? [])], walls = avoid.walls ?? [];
   for (const w of requests) {
     const r = w.kind === 'sway'
-      ? swayAtFace(topo, result, rot, w.face, w.a, options.sway, { braces, walls })
+      ? swayAtFace(topo, result, rot, w.face, w.a,
+        { ...options.sway, fitFeature: w.fitFeature === true }, { braces, walls })
       : drawnWall(w.a, w.b, tris, 0, { ...options.draw, topo, rot, offset: result.offset });
     const item = { ok: r.ok, info: r, triStart: 0, triEnd: 0 };
     items.push(item);
