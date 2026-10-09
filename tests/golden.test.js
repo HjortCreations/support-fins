@@ -20,8 +20,9 @@
 // one scene's material into the next -- the PETG scene did, into four PLA goldens.
 
 import { r3, run } from './_scene.js';
+import { urlPath } from './_util.js';
 
-const DIR = new URL('./golden/', import.meta.url).pathname;
+const DIR = urlPath(new URL('./golden/', import.meta.url));
 const UPDATE = Deno.env.get('UPDATE_GOLDEN') === '1';
 
 const SCENES = [

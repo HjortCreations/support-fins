@@ -2,8 +2,11 @@
 // --allow-read tests/` runs offline. The support engine is pure geometry, so
 // every test is: build some geometry, assert an invariant on the triangle soup.
 
-export const WEB = new URL('../web/', import.meta.url).pathname;
-export const MODELS = new URL('../prototype/stress/models/', import.meta.url).pathname;
+// Windows paths and spaces: adapted from MiSTRFiNGA/support-fins (9dd02d6).
+import { fileURLToPath } from 'node:url';
+export const urlPath = fileURLToPath;
+export const WEB = new URL('../web/', import.meta.url).href;
+export const MODELS = urlPath(new URL('../prototype/stress/models/', import.meta.url));
 
 export const { buildTopology, analyze } = await import(`${WEB}overhangs.js`);
 export const fins = await import(`${WEB}fins.js`);

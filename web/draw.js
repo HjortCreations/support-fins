@@ -43,22 +43,8 @@ function surfaceZsAt(tris, x, y) {
  * (bridge.stl's deck on its piers) carries coincident inner faces, and an inside/outside
  * count through them reads air as solid. */
 function surfaceHits(tris, x, y) {
-  const hits = [];
-  for (let i = 0; i < tris.length; i += 9) {
-    const ax = tris[i], ay = tris[i + 1], az = tris[i + 2];
-    const bx = tris[i + 3], by = tris[i + 4], bz = tris[i + 5];
-    const cx = tris[i + 6], cy = tris[i + 7], cz = tris[i + 8];
-    const den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
-    if (Math.abs(den) < 1e-12) continue;
-    const l1 = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / den;
-    const l2 = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / den;
-    const l3 = 1 - l1 - l2;
-    if (l1 < -1e-9 || l2 < -1e-9 || l3 < -1e-9) continue;
-    const ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx - ax, vy = cy - ay, vz = cz - az;
-    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-    hits.push([l1 * az + l2 * bz + l3 * cz, nz / (Math.hypot(nx, ny, nz) || 1)]);
-  }
-  return hits;
+  // The XY grid retains original triangle order, including shared-edge ties.
+  return gridHitsAt(tris, x, y);
 }
 
 /**

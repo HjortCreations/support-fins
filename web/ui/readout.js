@@ -6,7 +6,7 @@ import { t, tn, currentLang } from './i18n.js';
 import { PAD } from '../fins.js';
 import { el } from './dom.js';
 import { removedIds } from './remove.js';
-import { drawnWalls, drawMsg, selectedWall, selectedNote, drawShown, drawMaterial } from './walls.js';
+import { drawnWalls, drawBusy, drawMsg, selectedWall, selectedNote, drawShown, drawMaterial } from './walls.js';
 import {
   finMode, finsVisible, materialDensity, syncSectionSums, autoLike,
 } from './settings.js';
@@ -179,6 +179,7 @@ function updateDrawReadout(built, ms) {
     ? parts.join(' + ') + (tines ? ` · ${tines} tines` : '')
     : 'none yet';
   box.classList.toggle('warn', ok.length === 0);
+  if (drawBusy) box.textContent = 'generating hand-placed supports…';
 
   const lead = [];
   const help = [];
@@ -202,7 +203,7 @@ function updateDrawReadout(built, ms) {
       + `up to ${Math.round(tallest)}mm before gripping the part — that much of it prints as a `
       + 'lone wall. Fine if it prints; rotate so that side reaches the plate if it wobbles.');
   }
-  if (bad) {
+  if (bad && !drawBusy) {
     const one = drawnWalls.find((w) => !w.ok);
     lead.push(`${bad} wall${bad === 1 ? '' : 's'} couldn’t build here`
       + `${one?.info?.reason ? ` (${one.info.reason})` : ''}. Undo, or redraw`);

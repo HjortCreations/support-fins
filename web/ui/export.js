@@ -5,7 +5,7 @@ import { writeBinarySTL, download } from '../stl.js';
 import { writeThreeMF } from '../threemf.js';
 import { el } from './dom.js';
 import { part, topology, lastResult, rotM3, partName } from './part.js';
-import { activeAdded } from './finbuild.js';
+import { activeAdded, geometryPending } from './finbuild.js';
 
 /**
  * Export the part AS ORIENTED, seated on the plate, with the fins as extra
@@ -19,7 +19,7 @@ import { activeAdded } from './finbuild.js';
  * Returns null when there is nothing to export.
  */
 export function buildExportGeometry() {
-  if (!part || !topology || !lastResult) return null;
+  if (!part || !topology || !lastResult || geometryPending()) return null;
   const rot = rotM3.elements;
   const dz = lastResult.offset.z;
   const dx = lastResult.offset.x, dy = lastResult.offset.y;
@@ -63,14 +63,19 @@ const FORMATS = {
 const btn = el('export');
 const menu = el('export-menu');
 
+function refreshAvailability() {
+  const ready = !!(part && topology && lastResult) && !geometryPending();
+  el('export-stl').disabled = el('export-3mf').disabled = !ready;
+  el('export-fins').disabled = !ready || activeAdded().length === 0;
+}
+addEventListener('geometryactivitychange', () => { if (!menu.hidden) refreshAvailability(); });
+
 function setOpen(open) {
   menu.hidden = !open;
   btn.setAttribute('aria-expanded', String(open));
   if (open) {
     // nothing to write until a part is loaded; no fins-only file without fins
-    const ready = !!(part && topology && lastResult);
-    el('export-stl').disabled = el('export-3mf').disabled = !ready;
-    el('export-fins').disabled = !ready || activeAdded().length === 0;
+    refreshAvailability();
     menu.querySelector('button:not(:disabled)')?.focus();
   }
 }

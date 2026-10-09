@@ -14,14 +14,21 @@
 // bracket next to a separate 10 mm peg.
 
 import { createRequire } from 'node:module';
-import { WEB, fins, buildTopology, analyze, rotX, isClosed, assert, assertClose } from './_util.js';
+import { WEB, fins, buildTopology, analyze, rotX, isClosed, assert, assertClose, urlPath } from './_util.js';
 
 const { isStep, stepObjects, STEP_PARAMS } = await import(`${WEB}step.js`);
 
-const FIX = new URL('./fixtures/', import.meta.url).pathname;
-const OCCT = `${WEB}vendor/occt-import-js-0.0.23/`;
+const FIX = urlPath(new URL('./fixtures/', import.meta.url));
+const OCCT = urlPath(new URL('vendor/occt-import-js-0.0.23/', WEB));
 
-const occtimportjs = createRequire(import.meta.url)(`${OCCT}occt-import-js.js`);
+// Load vendored CommonJS explicitly (Deno 2 otherwise treats .js as ESM).
+// Adapted from MiSTRFiNGA/support-fins (9dd02d6).
+const occtimportjs = (() => {
+  const file = `${OCCT}occt-import-js.js`, module = { exports: {} };
+  new Function('module', 'exports', 'require', '__filename', '__dirname', Deno.readTextFileSync(file))(
+    module, module.exports, createRequire(import.meta.url), file, OCCT);
+  return module.exports;
+})();
 const occt = await occtimportjs({ wasmBinary: Deno.readFileSync(`${OCCT}occt-import-js.wasm`) });
 
 const readFixture = (name) =>
