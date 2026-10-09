@@ -381,7 +381,7 @@
       Base shape
       <select id="base-style"><option value="taper">Taper</option><option value="cross">Cross</option></select>
     </label>
-    <label class="fld" title="Thicken the bottom of bed-connected fins, returning to their actual wall gauge over the lower 20% of height.">
+    <label class="fld" title="Thicken the bottom of bed-connected fins and cross ribs. Cross keeps at least the actual wall thickness all the way to its top. Extra Cross thickness tapers back to that full thickness; the original wall's extra thickness tapers over its lower 20%.">
       <span>Base thickness <output id="base-thickness-value" class="mut" for="base-thickness">1× · 0.88 mm</output></span>
       <input type="range" id="base-thickness" aria-label="Base thickness multiplier" min="1" max="4" step="0.25" value="1">
     </label>
