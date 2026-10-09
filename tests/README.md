@@ -10,6 +10,11 @@ deno test -A
 
 ## What's pinned (and why it exists)
 
+**`cross_thickness.test.js`** -- horizontal 0.6 mm layer sections through a
+metre-high sway fin retain the chosen 2/4/6/8 nozzle lines, including the last
+rib layers after STL and 3MF export. Extra base thickness never tapers below the
+full wall gauge. A blocked full-width top is refused instead of silently thinned.
+
 **`pr_review.test.js`** -- sway thickness retains the print-tested height-based
 floor even under the default nozzle profile; a profile → legacy transition restores
 legacy geometry in the same engine; round-flange joints overlap both neighbours

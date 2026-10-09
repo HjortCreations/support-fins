@@ -94,50 +94,65 @@ function reinforceCross(tris, line, height, th, topo, rot, offset, settings, obs
   if (h <= 1) return skip('contact too close to the plate');
   const [lo, hi] = outlineAt(tris, a, ux, uy, half, h);
   if (!(hi - lo > 1e-4)) return skip('no matching wall near the top');
-  const upperHalf = Math.min(half, (hi - lo) / 4);
-  const centre = length / 2, upperCentre = (lo + hi) / 2;
+  // Taper reach, never the printable wall gauge. A narrow original body's
+  // top used to pinch this rib below its selected nozzle/line-count thickness.
+  const upperHalf = half;
+  const centre = length / 2, middle = (lo + hi) / 2;
+  // A sway body's 4mm-deep top can be narrower than a large-nozzle rib.
+  // Try either end-aligned position rather than thinning the rib to fit.
+  // Exact part/neighbour checks decide which side has room.
+  const upperCentres = hi - lo < th ? [middle, lo + half, hi - half] : [middle];
   const P = (s, w, z) => [a[0] + ux * s - uy * w, a[1] + uy * s + ux * w, z];
   const own = { pos: new Float64Array(tris.flat()), nFaces: tris.length / 3 };
-  // Ray parity in the overlapping wall + foot is even; certify above the foot.
-  if (![Math.min(h / 4, Math.max(1.1, h / 10)), h / 2, h * 0.9].every((z) => {
-    const s = centre + (upperCentre - centre) * z / h;
-    return insidePart(own, ID, ZERO, ...P(s, 0, z));
-  })) return skip('cross would not join the original support along its height');
   const { baseThickness } = baseSettings(settings.baseThickness);
   const wide = half * baseThickness;
   const footH = Math.min(0.6, h / 4), footMargin = Math.max(1, th / 8);
   const attempts = [1, 0.75, 0.5, 0.25].flatMap((f) => [[reach * f, reach * f], [0, reach * f], [reach * f, 0]]);
   let reason = 'cross arms blocked';
-  for (const [left, right] of attempts) {
-    const w0 = -half - left, w1 = half + right;
-    // Keep the cross visible at the top, rather than burying its tip inside
-    // the original wall. An omitted arm stays flush, never flaring outward.
-    const topLeft = -Math.min(th, half + left), topRight = Math.min(th, half + right);
-    const bottom = [[centre - wide, w0], [centre + wide, w0], [centre + wide, w1], [centre - wide, w1]];
-    const top = [[upperCentre - upperHalf, topLeft], [upperCentre + upperHalf, topLeft],
-      [upperCentre + upperHalf, topRight], [upperCentre - upperHalf, topRight]];
-    const extra = [];
-    loftExtrude(bottom, top, 0, h, P, extra);
-    const foot = roundedPolygon([[centre - wide - footMargin, w0 - footMargin],
-      [centre + wide + footMargin, w0 - footMargin], [centre + wide + footMargin, w1 + footMargin],
-      [centre - wide - footMargin, w1 + footMargin]], wide + footMargin);
-    boxExtrude(foot, 0, footH, P, extra);
-    const contains = ([px, py, z]) => {
-      if (z < -1e-6 || z > h) return false;
-      const x = px - a[0], y = py - a[1], s = x * ux + y * uy, w = -x * uy + y * ux, f = z / h;
-      if (Math.abs(s - (centre + (upperCentre - centre) * f)) < wide + (upperHalf - wide) * f
-        && w > w0 + (topLeft - w0) * f && w < w1 + (topRight - w1) * f) return true;
-      return z <= footH && foot.every((p, i) => {
-        const q = foot[(i + 1) % foot.length];
-        return (q[0] - p[0]) * (w - p[1]) - (q[1] - p[1]) * (s - p[0]) > 1e-9;
-      });
-    };
-    reason = additionBlocked(extra, contains, topo, rot, offset, obstacles, gap);
-    if (reason) continue;
-    const partial = (base.status !== 'off' && base.status !== 'added') || left !== reach || right !== reach;
-    return { ...base, status: partial ? 'partial' : 'added', style: 'cross', cross: true,
-      tris: [...base.tris, ...extra], crossHeight: h, crossRequested: reach, crossLeft: left, crossRight: right,
-      reason: partial ? 'one or more base arms limited' : '' };
+  const levels = [Math.min(h / 4, Math.max(1.1, h / 10)), h / 2, h * 0.9, h];
+  const outlines = levels.map((z) => outlineAt(tris, a, ux, uy, half, z));
+  for (const upperCentre of upperCentres) {
+    // Certify the overlap, not the rib's centre: a full-width rib may extend
+    // out past a narrow body while still joining it along its whole height.
+    const joined = levels.every((z, i) => {
+      const f = z / h, s = centre + (upperCentre - centre) * f;
+      const w = wide + (upperHalf - wide) * f;
+      const left = Math.max(outlines[i][0], s - w), right = Math.min(outlines[i][1], s + w);
+      return right - left > 1e-4 && insidePart(own, ID, ZERO, ...P((left + right) / 2, 0, z));
+    });
+    if (!joined) { reason = 'cross would not join the original support along its height'; continue; }
+    for (const [left, right] of attempts) {
+      const w0 = -half - left, w1 = half + right;
+      // Keep the cross visible at the top, rather than burying its tip inside
+      // the original wall. An omitted arm stays flush, never flaring outward.
+      const topLeft = -Math.min(th, half + left), topRight = Math.min(th, half + right);
+      const bottom = [[centre - wide, w0], [centre + wide, w0], [centre + wide, w1], [centre - wide, w1]];
+      const top = [[upperCentre - upperHalf, topLeft], [upperCentre + upperHalf, topLeft],
+        [upperCentre + upperHalf, topRight], [upperCentre - upperHalf, topRight]];
+      const extra = [];
+      loftExtrude(bottom, top, 0, h, P, extra);
+      const foot = roundedPolygon([[centre - wide - footMargin, w0 - footMargin],
+        [centre + wide + footMargin, w0 - footMargin], [centre + wide + footMargin, w1 + footMargin],
+        [centre - wide - footMargin, w1 + footMargin]], wide + footMargin);
+      boxExtrude(foot, 0, footH, P, extra);
+      const contains = ([px, py, z]) => {
+        if (z < -1e-6 || z > h) return false;
+        const x = px - a[0], y = py - a[1], s = x * ux + y * uy, w = -x * uy + y * ux, f = z / h;
+        if (Math.abs(s - (centre + (upperCentre - centre) * f)) < wide + (upperHalf - wide) * f
+          && w > w0 + (topLeft - w0) * f && w < w1 + (topRight - w1) * f) return true;
+        return z <= footH && foot.every((p, i) => {
+          const q = foot[(i + 1) % foot.length];
+          return (q[0] - p[0]) * (w - p[1]) - (q[1] - p[1]) * (s - p[0]) > 1e-9;
+        });
+      };
+      reason = additionBlocked(extra, contains, topo, rot, offset, obstacles, gap);
+      if (reason) continue;
+      const partial = (base.status !== 'off' && base.status !== 'added') || left !== reach || right !== reach;
+      return { ...base, status: partial ? 'partial' : 'added', style: 'cross', cross: true,
+        tris: [...base.tris, ...extra], crossHeight: h, crossThickness: th,
+        crossRequested: reach, crossLeft: left, crossRight: right,
+        reason: partial ? 'one or more base arms limited' : '' };
+    }
   }
   return skip(reason);
 }

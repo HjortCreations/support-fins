@@ -122,7 +122,12 @@ wall's centre as it tapers. Low contact tails do not cap the entire cross.
 **Cross reach** controls arm reach beyond the original wall, 5–80 mm per side
 (default 20 mm), independently of fin height or length. Cross does not apply
 the longitudinal **Base spread**, which remains available in Taper mode.
-**Base thickness** controls its thickness at the plate. Blocked
+**Base thickness** controls its thickness at the plate.
+The Cross rib retains the actual wall thickness all the way to its top: at least
+`nozzle × 1.1 × 2/4/6/8 lines`, including the Sway minimum where applicable.
+Only arm reach and any extra base thickness taper upward. A narrow original
+fin top no longer makes the cross thinner; its upper position can shift toward
+either end of the fin to clear the part while keeping the rib attached. Blocked
 arms are shortened or omitted, and the actual arm reach is reported below
 **Cross reach**. Original breakaway contacts are preserved. With a nozzle profile,
 normal, squat and sway foot plates and

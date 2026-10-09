@@ -259,7 +259,8 @@ original geometry. See [the user guide](LARGE-FORMAT-SUPPORTS.md).
 | Taper height | lower 20% of fin height, limited by the first positive contact height | returns to the actual body section at the seam; original contact triangles are retained |
 | Cross reach | 5–80 mm beyond each side of the original wall, default 20 mm | independent of height and length; Cross ignores Taper's Base spread |
 | Cross height | highest full-width wall station minus 0.5 mm | original breakaway neck is kept; low contact tails do not cap the cross |
-| Cross top | follows the original wall centre; full reach narrows to small visible arms | no floating top: samples at three heights must remain inside the original wall; very thin/sloping body sections can be skipped |
+| Cross thickness | at least the actual wall thickness throughout its height | includes the Sway thickness floor; extra base thickness tapers back to the wall gauge, never below it |
+| Cross top | arm reach narrows to small visible arms; thickness remains full | tries the body centre and, for narrow tops, either end-aligned position; overlap is checked at four heights and exact part/neighbour collisions still apply; unfit ribs are skipped rather than thinned |
 | Cross foot | rounded slab, at most 0.6 mm high | emitted and checked together with the rib |
 | reinforcement clearance | 0.95 × min(support gap, side clearance), floor 0.01 mm | triangle-surface and containment checks against the part and other supports; this is a mesh clearance, not a new physically validated slicer gap |
 

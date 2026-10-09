@@ -67,6 +67,10 @@ the original thin breakaway neck and contact geometry intact.
   so a metre-high support does not automatically grow an enormous cross.
 - **Base thickness** sets the cross rib's plate-level thickness. Extra thickness
   on the original fin still tapers over its lower 20%.
+- **Fin thickness** also sets the Cross rib's minimum thickness throughout its
+  height: `nozzle × 1.1 × 2/4/6/8 lines`, or the Sway minimum if that is thicker.
+  With Base thickness at 1×, the rib has constant thickness. Higher multipliers
+  taper back to that full thickness, never below it. Only arm reach narrows.
 - **Base spread** is hidden and ignored in Cross mode. Its value is retained for
   switching back to Taper.
 
@@ -77,9 +81,13 @@ increasing the request may leave the same arm size when no larger arm clears the
 model or neighbouring supports. Cross reach changes plate-level arm reach, while
 the near-top arm dimensions remain tied to the wall thickness.
 
-The cross follows the original wall's centre as it narrows and has a rounded foot
+The cross follows the original wall toward its top and has a rounded foot
 of its own. Low contact tails do not shorten the whole cross. If the body is too
 short, curved or unsuitable, no detached rib is created.
+If the original body's top is narrower than the full-thickness rib, the builder
+also tries positions aligned with either end of that body section. It checks the
+overlap at four heights and uses the existing exact part/neighbour clearance
+tests. If none fits, it reports an omitted cross rather than making it thinner.
 
 ![A generated metre-high post with cross ribs extending almost to its top](images/large-format-cross.jpg)
 

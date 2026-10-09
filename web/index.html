@@ -371,7 +371,7 @@
       Base shape
       <select id="base-style"><option value="taper">Taper</option><option value="cross">Cross</option></select>
     </label>
-    <label class="fld" title="Thicken the bottom of bed-connected fins and cross ribs. 1× keeps the selected wall thickness. Cross ribs taper almost all the way up; the original wall's extra thickness tapers over its lower 20%.">
+    <label class="fld" title="Thicken the bottom of bed-connected fins and cross ribs. Cross keeps at least the actual wall thickness all the way to its top. Extra Cross thickness tapers back to that full thickness; the original wall's extra thickness tapers over its lower 20%.">
       <span>Base thickness <output id="base-thickness-value" class="mut" for="base-thickness">1× · 0.88 mm</output></span>
       <input type="range" id="base-thickness" aria-label="Base thickness multiplier" min="1" max="4" step="0.25" value="1">
     </label>
@@ -379,7 +379,7 @@
       <span>Base spread <output id="base-spread-value" class="mut" for="base-spread">0 mm / end</output></span>
       <input type="range" id="base-spread" aria-label="Base spread in millimeters per end" min="0" max="300" step="5" value="0">
     </label>
-    <label class="fld" id="cross-reach-fld" hidden title="Cross arm reach beyond the original wall at the plate, in millimeters. Independent of fin height and length. Arms taper upward but remain visible near the top; blocked arms are shortened or omitted.">
+    <label class="fld" id="cross-reach-fld" hidden title="Cross arm reach beyond the original wall at the plate, in millimeters. Arm reach tapers upward; rib thickness stays at least the full Fin thickness. Blocked arms are shortened or omitted.">
       <span>Cross reach <output id="cross-reach-value" class="mut" for="cross-reach">20 mm / arm</output></span>
       <input type="range" id="cross-reach" aria-label="Cross reach in millimeters per arm" min="5" max="80" step="5" value="20">
       <small id="cross-built" class="mut" aria-live="polite"></small>
