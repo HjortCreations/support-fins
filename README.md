@@ -73,6 +73,14 @@ geometry. See [the nozzle guide](docs/NOZZLE-PROFILES.md) for dimensions,
 clearance limits and export checks. Nozzle profiles are geometry-tested;
 the new large-nozzle profiles have not been physically print-validated.
 
+### Full-height Cross reinforcement
+
+**Base shape → Cross** adds a perpendicular rib, keeping at least the full wall
+thickness almost to the fin's top. **Cross reach** (5–80 mm per arm) is independent
+of height and Taper's Base spread. Added base gauge may taper back to the selected
+wall gauge; the rib never pinches thinner to fit. Clearances shorten or omit blocked
+arms and the readout reports actual reach. Check continuity in the slicer.
+
 ### Tapered bases
 
 **Base thickness** (1–4×) and **Base spread** (0–300 mm per end) independently

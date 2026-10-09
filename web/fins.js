@@ -97,6 +97,8 @@ export function applyTunables(t = {}) {
   FIN.roundFeet = PROP.roundFeet = PERP.roundFeet = t.roundFeet === true;
   if (Number.isFinite(t.baseThickness)) FIN.baseThickness = baseSettings(t.baseThickness).baseThickness;
   if (Number.isFinite(t.baseSpread)) FIN.baseSpread = baseSettings(1, t.baseSpread).baseSpread;
+  if (['taper', 'cross'].includes(t.baseStyle)) FIN.baseStyle = t.baseStyle;
+  if (Number.isFinite(t.crossReach)) FIN.crossReach = Math.max(5, Math.min(80, t.crossReach));
   const profile = printDimensions(t.nozzle, t.wallLines);
   if (profile) {
     FIN.nozzle = profile.nozzle;

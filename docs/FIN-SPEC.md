@@ -313,3 +313,19 @@ Draw passes explicit floor stations, including squat floors, never the top line.
 Draw reinforcement avoids Auto supports; Auto bases do not receive hand walls.
 Suggest + Add therefore reports this one-way collision limitation. Overlapping
 solids count before union in the mass estimate; use the slicer's union estimate.
+
+## Full-height Cross reinforcement
+
+Cross is optional (default Taper). Reach 5–80 mm per arm is independent of fin
+height and longitudinal spread. The perpendicular rib stops 0.5 mm below the
+highest full-width body station, preserving the breakaway neck. Its wall gauge
+is at least the actual original support gauge throughout, including the Sway
+floor. Base gauge may taper from the chosen multiplier back to that full gauge.
+
+A narrow top tries end-aligned full-width positions, certifying overlap along
+four heights and full part/neighbor clearance. It never narrows to a sub-bead
+blade. A top that cannot accommodate full gauge refuses the Cross. Blocked arms
+try shorter reaches or omissions; actual/requested reach and skipped/limited
+status are reported. Added rib/rounded-foot triangles stay owned by their fin.
+Metre-high 2/4/6/8-line sections are tested through STL and 3MF round trips,
+including the last rib layers. No new physical print validation is claimed.
