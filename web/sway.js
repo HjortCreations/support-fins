@@ -252,7 +252,9 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
   if (H < minRibH) {
     return { ok: false, reason: `that face only reaches ${fz1.toFixed(0)}mm up — too short to need a brace` };
   }
-  const thFor = (h) => S.wallThickness ?? Math.min(SWAY.thMax, SWAY.thMin + SWAY.thPerMm * h);
+  // A nozzle profile may strengthen a brace, never undercut its print-tested floor.
+  const thFor = (h) => Math.max(S.wallThickness ?? 0,
+    Math.min(SWAY.thMax, SWAY.thMin + SWAY.thPerMm * h));
   let th = thFor(H);
 
   // Seat the rib's inner edge on the outermost point of the face INSIDE its own

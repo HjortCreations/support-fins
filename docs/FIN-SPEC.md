@@ -252,9 +252,9 @@ original geometry. See [the user guide](LARGE-FORMAT-SUPPORTS.md).
 | wall thickness | nozzle diameter × 1.1 × 2/4/6/8 lines | explicit user choice; more material for a thicker support; not a measured strength guarantee |
 | contact tip / tine width | nozzle × 1.1 | one bead regardless of wall thickness; slicer line width must match |
 | tine height | selected layer height, 0.08–2.4 mm in the UI | remains one layer; match the slicer and choose an appropriate height for the nozzle |
-| sway dimensions | selected wall thickness; depth = Brace depth × height | bypasses the legacy 2.4 mm / 60 mm caps; depth still tapers toward a 4 mm top |
+| sway dimensions | thickness = max(profile thickness, min(2.4, 1.2 + 0.004 × height)); depth = Brace depth × height | retains the print-tested thickness floor; permits thicker profiles and bypasses the 60 mm depth cap; depth tapers toward a 4 mm top |
 | ordinary feet | inscribed rounded end corners | keeps the previous clearance envelope; includes prop, squat, wedge and sway feet |
-| Taper base thickness | 1–4× selected wall thickness at the plate | independent from longitudinal reach; default 1× |
+| Taper base thickness | 1–4× actual support wall thickness at the plate, including the Sway floor | independent from longitudinal reach; default 1× |
 | Taper base spread | 0–300 mm per end in the fin plane | default 0; checked ends can be omitted individually |
 | Taper height | lower 20% of fin height, limited by the first positive contact height | returns to the actual body section at the seam; original contact triangles are retained |
 | Cross reach | 5–80 mm beyond each side of the original wall, default 20 mm | independent of height and length; Cross ignores Taper's Base spread |
@@ -267,6 +267,11 @@ Reinforcement is restricted to straight, plate-connected supports. Collision
 checks can shorten or omit cross arms, omit Taper ends, fall back to thickness
 alone, or skip the addition. Original support generation keeps its existing
 clearance rules; added geometry does not repair pre-existing collisions. Rounded
+flange segments have short closed joint solids overlapping both neighbours inside
+the original flange contour. In Suggest + Add, Auto bases do not receive drawn
+wall geometry: they can grow into a hand-placed wall. Draw reinforcement checks
+Auto geometry, so this protection is one-way. The readout and guide flag this
+limitation; use Draw only or inspect mixed-mode intersections in the slicer. Rounded
 Taper containment checks conservatively use its outer rectangle.
 
 New solids overlap their own fin and are unioned by the slicer, as existing feet

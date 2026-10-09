@@ -146,8 +146,9 @@ function syncPrintProfile() {
   syncSectionSums();
 }
 function syncBaseSettings() {
-  applyTunables({ baseStyle: el('base-style').value, baseThickness: el('base-thickness').valueAsNumber, baseSpread: el('base-spread').valueAsNumber });
-  applyTunables({ crossReach: el('cross-reach').valueAsNumber });
+  applyTunables({ nozzle: el('nozzle').valueAsNumber, wallLines: el('wall-lines').valueAsNumber,
+    baseStyle: el('base-style').value, baseThickness: el('base-thickness').valueAsNumber,
+    baseSpread: el('base-spread').valueAsNumber, crossReach: el('cross-reach').valueAsNumber });
   el('base-spread-fld').hidden = FIN.baseStyle === 'cross';
   el('cross-reach-fld').hidden = FIN.baseStyle !== 'cross';
   el('cross-reach-value').textContent = `${FIN.crossReach} mm / arm`;

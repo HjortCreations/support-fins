@@ -21,7 +21,10 @@ export function buildDrawn(topo, result, rot, requests, options, avoid = {}, ext
     if (w.kind === 'sway') braces.push(r);
     const start = built.triangles.length;
     for (const t of r.tris) built.triangles.push(t);
-    built.fins.push({ line: r.foot ?? r.top, height: r.height,
+    // Draw's top is a contact line, not a base. Derive explicit floor stations
+    // for ordinary walls; sway already supplies its plate-level foot line.
+    const foot = r.foot ?? r.top.map(([x, y], i) => [x, y, r.floors?.[i] ?? 0]);
+    built.fins.push({ line: foot, height: r.height,
       wallThickness: r.th, triRanges: [[start, built.triangles.length]] });
   }
   reinforceBuiltBases(built, topo, result, rot, FIN, PROP.th,

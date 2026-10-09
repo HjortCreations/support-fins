@@ -78,11 +78,22 @@ function coverPitch(coverage) {
  *
  * So the values travel WITH the build request (opts.tunables, structured-cloned like
  * every other option) and are applied here, in whichever instance is doing the work.
- * Unknown or non-finite entries are ignored, and calling this with nothing leaves the
- * defaults alone -- an old caller that doesn't pass tunables behaves exactly as before.
+ * Unknown or non-finite entries are ignored. Omitted nozzle profiles reset only
+ * profile-driven dimensions to legacy defaults; material clearances are independent.
  */
-export function applyTunables(t) {
-  if (!t) return;
+const legacyProfile = [
+  [FIN, ['nozzle', 'wallLines', 'roundFeet']],
+  [PROP, ['th', 'roundFeet', 'tip', 'tineW', 'footMin', 'footMax', 'squatBrimW']],
+  [PERP, ['th', 'roundFeet', 'footHalf']],
+].map(([obj, keys]) => [obj, Object.fromEntries(keys.map((key) => [key, obj[key]]))]);
+
+export function applyTunables(t = {}) {
+  t ??= {};
+  // Omitted profiles mean legacy dimensions; unrelated material/base settings
+  // still travel independently. Explicit invalid profiles remain ignored.
+  if ((!('nozzle' in t) && !('wallLines' in t)) || t.nozzle === null) {
+    for (const [obj, values] of legacyProfile) Object.assign(obj, values);
+  }
   if (['taper', 'cross'].includes(t.baseStyle)) FIN.baseStyle = t.baseStyle;
   if (Number.isFinite(t.crossReach)) FIN.crossReach = Math.max(5, Math.min(80, t.crossReach));
   if (Number.isFinite(t.baseThickness)) FIN.baseThickness = baseSettings(t.baseThickness).baseThickness;

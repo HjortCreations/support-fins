@@ -44,7 +44,15 @@ export function roundedFlange(sections, out) {
     }
   }
   for (let i = 0; i < secs.length - 1; i++) {
-    const a = secs[i], b = secs[i + 1];
+    const inset = (sec, other) => {
+      const len = Math.hypot(other[0][0] - sec[0][0], other[0][1] - sec[0][1]);
+      const t = Math.min(0.005 / Math.max(len, 1e-8), 0.005);
+      return sec.map((p, j) => p.map((v, k) => k === 2 ? v : v + (other[j][k] - v) * t));
+    };
+    // Pull internal caps apart; the longer joint below overlaps each side.
+    // Thus hosts never receive two segment solids with coincident end faces.
+    const a = i === 0 ? secs[i] : inset(secs[i], secs[i + 1]);
+    const b = i === secs.length - 2 ? secs[i + 1] : inset(secs[i + 1], secs[i]);
     const w = Math.min(Math.hypot(a[0][0] - a[3][0], a[0][1] - a[3][1]),
       Math.hypot(b[0][0] - b[3][0], b[0][1] - b[3][1])) / 2;
     const poly = [a[0], b[0], b[3], a[3]].map((p) => p.slice(0, 2));
@@ -52,6 +60,22 @@ export function roundedFlange(sections, out) {
       i === secs.length - 2 ? w : 0, i === 0 ? w : 0];
     boxExtrude(roundedPolygon(poly, radii), a[0][2], Math.min(a[1][2], b[1][2]),
       (x, y, z) => [x, y, z], out);
+  }
+  // Short overlapping joint solids connect face-to-face segments without
+  // expanding the checked contour. Follow the original sections on both sides
+  // of each joint, staying below the lower of the adjoining flange roofs.
+  for (let i = 1; i < secs.length - 1; i++) {
+    const a = secs[i - 1], b = secs[i], c = secs[i + 1];
+    const roof = Math.min(a[1][2], b[1][2], c[1][2]);
+    const near = (other) => {
+      const len = Math.hypot(other[0][0] - b[0][0], other[0][1] - b[0][1]);
+      const t = Math.min(0.01 / Math.max(len, 1e-8), 0.01);
+      return b.map((p, j) => p.map((v, k) => k === 2
+        ? (j === 1 || j === 2 ? roof : b[0][2])
+        : v + (other[j][k] - v) * t));
+    };
+    const joint = b.map((p, j) => [p[0], p[1], j === 1 || j === 2 ? roof : b[0][2]]);
+    ribbon([near(a), joint, near(c)], out);
   }
 }
 

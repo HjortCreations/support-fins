@@ -74,13 +74,15 @@ worker rather than duplicating the model across many workers on every click.
 Under **Walls**, set **Nozzle** and use **Fin thickness**
 to choose 2, 4, 6 or 8 lines. Wall thickness is `nozzle × 1.1 × line count`, shown
 in millimetres. For example, a 1.6 mm nozzle gives 3.52 / 7.04 / 10.56 / 14.08 mm.
-The same dimensions reach Auto, Full coverage, Draw and sway braces, including
+These settings reach Auto, Full coverage, Draw and sway braces, including
 the background worker and export. Contact tips and grip tines remain one line
 wide (`nozzle × 1.1`); match that line width and the layer-height field in your
 slicer. The layer-height field accepts up to 2.4 mm for larger nozzles.
 
-With a nozzle profile selected, sway ribs use the chosen wall thickness and the
-full **Brace depth** percentage, without the old 2.4 mm / 60 mm caps. Their
+With a nozzle profile selected, sway thickness is the larger of the chosen wall
+thickness and the print-tested legacy floor: `min(2.4, 1.2 + 0.004 × height)` mm.
+The profile can exceed 2.4 mm but cannot make a brace thinner than that floor.
+Ribs use the full **Brace depth** percentage without the old 60 mm depth cap. Their
 existing taper in depth stays in place. Feet stay wider than the wall. Solid walls are the
 default; cutouts remain optional. These dimensions are tested as geometry,
 including a 1,000 mm post, and need physical print validation on your machine.
@@ -95,8 +97,8 @@ oliveiracelso's fork](https://github.com/oliveiracelso/support-fins/blob/main/we
 Windows test-path and OCCT loading fixes are adapted from
 [MiSTRFiNGA's fork](https://github.com/MiSTRFiNGA/support-fins/commit/9dd02d69169f5a1ba54c1e53334a86a65e1cf7bf).
 
-**Base reinforcement:** **Base thickness** multiplies the selected wall
-thickness by 1–4 at the plate; **Base spread** independently extends the base
+**Base reinforcement:** **Base thickness** multiplies the support's actual wall
+thickness (including the Sway minimum) by 1–4 at the plate; **Base spread** extends the base
 0–300 mm per end along the fin plane. Both return to the original outline with a
 straight taper over the lower 20% of support height, shortened when a contact
 starts lower. Defaults (1× and 0 mm) leave the original geometry unchanged.
@@ -106,6 +108,11 @@ the status reports partial and skipped bases. Supports mounted on the part and
 curved bases are left unchanged. Existing feet and breakaway contacts are kept.
 This adds closed overlapping solids, as the existing feet do; inspect the union
 in your slicer. Plate fillets are not implemented.
+
+**Suggest + Add limitation:** hand-placed reinforcement checks Auto supports,
+but Auto bases are generated without the hand-placed walls and can overlap them.
+The readout warns when this combination includes added Auto bases. Inspect those
+intersections in the slicer, or use Draw only; collision protection is not bilateral.
 
 **Cross bases and rounded feet:** choose **Base shape → Cross** for a perpendicular
 rib crossing the original fin at its base. The additional rib narrows toward a section
@@ -132,7 +139,7 @@ Sway braces stop that by tying the part's upright sides to a stiff support all t
 
 **What a sway brace is:** a vertical rib standing **edge-on** to an upright side (its stiff
 direction). It's deep at the bed and tapers to a 4 mm flat top, uses the selected
-nozzle's wall thickness (or the original height-based thickness without a profile),
+nozzle's wall thickness with the original height-based thickness as its minimum,
 and sits on a thin foot on the plate. One-layer horizontal tines, spaced **evenly
 up the full height**, tie it to the part. Like every support here, it stands off by the
 breakaway gap and snaps off; only the tines touch the part.

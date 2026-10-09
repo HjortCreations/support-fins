@@ -193,6 +193,12 @@ function baseNotes(built, lead, help) {
   }
   if (r.partial) lead.push(`${r.partial} base extensions limited by nearby geometry`);
   if (r.skipped) lead.push(`${r.skipped} base reinforcements skipped: no clear space or suitable bed-connected base`);
+  if (autoLike() && drawShown() && drawnWalls.some((w) => w.ok)
+      && built?.fins?.some((f) => !removedIds.has(f.id)
+        && ['added', 'partial'].includes(f.baseReinforcement?.status))) {
+    lead.push(t('Check Auto bases against hand-placed supports in the slicer'));
+    help.push(t('Hand-placed reinforcement avoids Auto supports, but Auto bases are generated without the hand-placed walls. In Suggest + Add, their bases can overlap a drawn wall. Inspect the union or use Draw only.'));
+  }
 }
 
 /**

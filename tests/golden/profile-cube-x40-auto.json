@@ -21,7 +21,7 @@
   "walls": 3,
   "tines": 18,
   "unserved": 0,
-  "triangles": 1956,
+  "triangles": 2256,
   "padTriangles": 28302,
   "fins": [
     {
@@ -73,5 +73,5 @@
       ]
     }
   ],
-  "sha256": "4b08ead2abb480e055eba8d81bba9325640ef55e5b33b772904fc7487f342cce"
+  "sha256": "355da826a6e5a98c926c8153be971b4cbe41be70525d5e207bbe0d2703f26d7a"
 }

@@ -10,6 +10,11 @@ deno test -A
 
 ## What's pinned (and why it exists)
 
+**`pr_review.test.js`** -- sway thickness retains the print-tested height-based
+floor even under the default nozzle profile; a profile → legacy transition restores
+legacy geometry in the same engine; round-flange joints overlap both neighbours
+without widening the checked contour; Draw reinforcement uses explicit floor stations.
+
 **`manual_sway.test.js`** -- small-wing fits above a wider body, top-to-side-edge
 contact, small low faces, sloping faces, insufficient grip-layer refusals, brace
 collision protection and worker ownership/export geometry with Cross reinforcement.

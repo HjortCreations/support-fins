@@ -45,8 +45,8 @@ retain those dimensions.
 
 With **Base shape → Taper**:
 
-- **Base thickness** sets plate-level thickness to 1–4 times the selected wall
-  thickness, in steps of 0.25. For example, a 7.04 mm wall at 2× becomes 14.08 mm
+- **Base thickness** sets plate-level thickness to 1–4 times the actual support wall
+  thickness (including the Sway minimum), in steps of 0.25. For example, a 7.04 mm wall at 2× becomes 14.08 mm
   thick at the plate.
 - **Base spread** extends each end along the original fin plane by 0–300 mm.
   This is separate from the thickness multiplier.
@@ -111,9 +111,12 @@ limited. If no printable contact fits the selected layer height, placement still
 fails with a contact-specific reason. These manual fits are geometry-tested,
 not physically print-validated.
 
-With a nozzle profile, sway ribs use the selected wall thickness and the complete
-Brace depth percentage. The original 2.4 mm thickness and 60 mm depth caps are
-not applied. A 1,000 mm rib at 15% therefore reaches about 150 mm from the face
+With a nozzle profile, sway ribs use `max(selected wall thickness,
+min(2.4, 1.2 + 0.004 × rib height))` mm. The print-tested height-based thickness
+remains a minimum; a profile can make it thicker. At 249 mm the minimum is about
+2.2 mm, even with the default 0.88 mm wall profile. Ribs use the complete Brace
+depth percentage without the original 60 mm depth cap.
+A 1,000 mm rib at 15% therefore reaches about 150 mm from the face
 at the plate. The existing taper toward a 4 mm top remains.
 
 ## Check and export
@@ -124,6 +127,12 @@ can remain unextended. The readout reports partial and skipped reinforcement.
 Part-mounted supports are not reinforced from the plate. Reinforcement belongs to
 its original support, so selecting, removing, undoing and exporting a fin includes
 its added base or cross.
+
+**Suggest + Add limitation:** Draw reinforcement avoids Auto supports, but the
+Auto worker does not receive hand-placed walls when generating its bases. An Auto
+base can therefore grow into a drawn wall. The readout warns when added Auto bases
+and hand-placed supports are combined. Inspect these intersections in the slicer,
+or use Draw only. This PR does not claim bilateral collision protection.
 
 Export STL or 3MF and inspect the sliced result, especially the first layers,
 contact tines, wall continuity and breakaway gaps. Like the existing feet, the
