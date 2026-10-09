@@ -9,6 +9,8 @@ const ID = [1, 0, 0, 0, 1, 0, 0, 0, 1], ZERO = { x: 0, y: 0, z: 0 };
 const baselinePath = Deno.args.find((a) => a.startsWith('--baseline='))?.slice(11);
 const before = baselinePath ? (await import(pathToFileURL(baselinePath).href)).drawnWall : null;
 const round = (n) => Math.round(n * 10) / 10;
+// Compare geometry and shared placement fields; newer engines may add metadata.
+const geometry = (r) => JSON.stringify([r.ok, r.tris, r.top, r.length, r.height, r.partAttached, r.tines]);
 function densePlate(n) {
   const coarse = block(-60, 60, -60, 60, 100, 120), out = [];
   const p = (a, b, c, u, v) => a.map((x, k) => x + (b[k] - x) * u / n + (c[k] - x) * v / n);
@@ -38,7 +40,7 @@ for (const n of [32, 64, 128]) {
   const a = [-40, 0, 100], b = [40, 0, 100];
   const legacy = before ? measure(() => before(a, b, tris, 0)) : null;
   const indexed = measure(() => drawnWall(a, b, tris, 0));
-  if (!indexed.out.ok || (legacy && JSON.stringify(legacy.out) !== JSON.stringify(indexed.out))) {
+  if (!indexed.out.ok || (legacy && geometry(legacy.out) !== geometry(indexed.out))) {
     throw new Error('Indexed Draw changed the benchmark geometry');
   }
   const result = analyze(topo, 45, ID);

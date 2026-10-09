@@ -37,8 +37,8 @@ geometry timings, not measurements of a user's model or browser interaction late
 The harness subdivides a 120 × 120 × 20 mm plate standing at Z100–120, with a small
 stem reaching the bed. It tests a straight 80 mm drawn wall and eight independent
 walls. The baseline is `web/draw.js` from commit
-`eaa12cf8a4e0beca4e3ca1af23d09cea0064611b`, using the same current dependencies.
-Before/after wall outputs are checked for exact equality.
+`eaa12cf8a4e0beca4e3ca1af23d09cea0064611b`, using the integrated engine dependencies from upstream `f2147bd`.
+Before/after triangle geometry and shared placement fields are checked for exact equality.
 
 Warm synchronous numbers below are the faster of two repeated runs after one
 initial run. They show the size of the eliminated work, not a statistical estimate
@@ -46,14 +46,14 @@ or a promised speedup on every model.
 
 | Triangles | Previous wall scan | Indexed wall query | Discarded automatic pass | Draw seating/status only |
 |---:|---:|---:|---:|---:|
-| 12,300 | 10.9 ms | 3.2 ms | 191.4 ms | 2.1 ms |
-| 49,164 | 33.1 ms | 1.8 ms | 344.1 ms | 5.8 ms |
-| 196,620 | 134.8 ms | 2.6 ms | 1,061.3 ms | 25.7 ms |
+| 12,300 | 10.5 ms | 2.1 ms | 192.1 ms | 2.1 ms |
+| 49,164 | 33.0 ms | 1.7 ms | 351.9 ms | 6.2 ms |
+| 196,620 | 132.9 ms | 2.7 ms | 1,071.9 ms | 23.1 ms |
 
 The last two columns use `bedPad: false` to isolate the discarded placement work.
 They include seating and floating-piece checks; they do not measure pad geometry.
 Wall timings exclude topology construction, model cloning and rendering. For the
-largest mesh, topology construction alone took 161.5 ms.
+largest mesh, topology construction alone took 178.5 ms.
 
 ## Can more cores help?
 
@@ -63,11 +63,11 @@ pose cache. Output is identical across worker counts. Largest-mesh results:
 
 | Workers | First batch, including startup/cloning | Second batch, caches retained |
 |---:|---:|---:|
-| 1 | 72.3 ms | 26.2 ms |
-| 2 | 76.5 ms | 17.9 ms |
-| 4 | 101.9 ms | 13.5 ms |
+| 1 | 70.8 ms | 25.9 ms |
+| 2 | 71.4 ms | 14.4 ms |
+| 4 | 91.9 ms | 10.9 ms |
 
-Four workers nearly halve the warm batch time, but make the first batch slower.
+Four workers more than halve the warm batch time, but make the first batch slower.
 This experiment does **not** merge the walls or perform inter-wall collision
 resolution. It establishes that independent wall math can benefit from a pool;
 it does not establish that an entire Auto build scales this way.

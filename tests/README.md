@@ -167,6 +167,13 @@ use it; the site parses with three.js's `STLLoader`):
 - ASCII with CRLF, exponents, upper-case keywords and a BOM reads;
 - a **truncated, empty or non-STL** file throws instead of opening blank.
 
+**`navpresets.test.js`** -- the Mouse menu's presets (`web/ui/navpresets.js`, #53):
+- **Default** is the old OrbitControls mapping (left orbits, right pans);
+- every preset can orbit and pan with a mouse button (a held modifier swaps the two);
+- the CAD presets (Fusion, Onshape, SolidWorks, Blender) leave **left-drag** unbound,
+  so left stays the picking button, and bind the packages' own buttons;
+- an unknown remembered key falls back to Default.
+
 **`step.test.js`** -- STEP import through the real vendored OpenCascade WASM (the
 same `stepObjects()` the app's worker output goes through):
 - a STEP is recognised by its **content** (the `ISO-10303-21;` magic), not its name;
@@ -216,6 +223,13 @@ and worker counts; timings are diagnostic, not pass/fail thresholds. See
 These tests verify geometry, not strength or removability on a physical printer.
 The test helpers use file URLs and native filesystem paths so Windows checkouts
 in directories containing spaces run the same offline suite as Linux CI.
+
+**`plate_only.test.js`** -- Plate only (#218), every support on the build plate:
+- a drawn line with part under it is **refused, naming the setting**; over open plate
+  the wall is byte-identical;
+- Auto and Full on the portal at Y90 build **no wall on the part** and count the
+  dropped one (`skipped.onPart`), never stilting it through the part;
+- off by default, and a part with nothing over it is unchanged.
 
 See `docs/FIN-SPEC.md` for the spec these encode. `prototype/stress/run.js` is the
 broader sweep (all models × poses) for eyeballing; this suite is the pass/fail gate.

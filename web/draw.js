@@ -16,7 +16,7 @@
  * into a watertight wall, reusing prop/sweep.js's proven `sweep` and its three
  * line-settling passes verbatim.
  */
-import { PROP, PART_BAND, footFor, surfaceZsAt as gridZsAt, surfaceHitsAt as gridHitsAt, sweep, sweepBetween, sweepSquat, floorLine, moldLine, contourTop, lowerSag, settleTop, emitTines, tineStepFor } from './prop.js';
+import { PROP, PART_BAND, footFor, surfaceZsAt as gridZsAt, surfaceHitsAt as gridHitsAt, sweep, sweepBetween, sweepSquat, braceWall, floorLine, moldLine, contourTop, lowerSag, settleTop, emitTines, tineStepFor } from './prop.js';
 
 /**
  * A hand-drawn wall may be much shorter than an auto wall (PROP.minSpan, 7 mm): the user
@@ -169,6 +169,10 @@ export function drawnLine(a, b, tris, step = PROP.stationStep, band = Infinity, 
  * Build one drawn breakaway wall. Returns `{ ok: true, tris, length, height, top }`
  * (`top`: the wall's contact line, the surface-z stations its top follows).
  * `opts.under`: follow only down-facing surfaces (drawnLine) -- the fill pass's walls.
+ * `opts.plateOnly`: never stand on the part; a line with part under it is refused (#218).
+ * `opts.brace`: a wall that stands on the plate over BRACE.aspect x its length gets
+ *   ribs at the plate (prop/brace.js; `braces` counts them). `floors`: each station's
+ *   bottom z, for a caller that braces later (the fill pass, once every wall is in).
  * or `{ ok: false, reason }` with a message the UI can show -- a hand-drawn wall
  * that can't be built should say WHY (too short, at the plate) rather than
  * silently doing nothing, the failure mode M5's scoreboard was built on.
@@ -191,6 +195,9 @@ export function drawnWall(a, b, tris, zBed = 0, opts = {}) {
     ? emitTines(line, tris, opts.topo, opts.rot, opts.offset, out,
                 tineStepFor(opts.tineDensity), minTop, opts.layerHeight ?? PROP.tineH)
     : 0;
+  const withBraces = (line, floorZ) => opts.brace
+    ? braceWall(line, floorZ, tris, zBed, out)
+    : 0;
   // PART-ATTACHED first: if solid part sits below the overhang, the support
   // stands on THAT, not the plate. Probe with a BANDED top contour so the
   // overhang isn't settled down onto the very floor we're looking for; floorLine
@@ -209,14 +216,24 @@ export function drawnWall(a, b, tris, zBed = 0, opts = {}) {
     const floor = floorLine(topPA, tris);
     let floorMax = 0;
     for (const p of floor) if (p[2] > floorMax) floorMax = p[2];
+    // Plate only (#218): part under the overhang refuses the wall outright -- the
+    // plate wall below would stilt straight through that part.
+    if (opts.plateOnly && floorMax > PROP.gap + 0.5) {
+      return { ok: false, reason: 'part of the model sits under this overhang, and '
+        + 'Plate only is on — a support can’t stand on the part here' };
+    }
     const mold = floorMax > PROP.gap + 0.5 ? moldLine(topPA, tris) : null;
     if (mold && sweepBetween(mold.top, mold.floor, out)) {
       let height = 0;
       for (let i = 0; i < topPA.length; i++) {
         height = Math.max(height, (topPA[i][2] - PROP.gap) - floor[i][2]);
       }
+      // a station whose floor is open air runs down to the plate (floorLine's 0): with
+      // no flange there, it is the one that most needs a brace (Isaac's hands)
+      const braces = withBraces(topPA, (i) => floor[i][2]);
       const tines = withTines(topPA);
-      return { ok: true, tris: out, length: len, height, partAttached: true, tines, top: topPA };
+      return { ok: true, tris: out, length: len, height, partAttached: true, tines, braces, top: topPA,
+               floors: floor.map((f) => f[2]) };
     }
   }
 
@@ -253,7 +270,7 @@ export function drawnWall(a, b, tris, zBed = 0, opts = {}) {
     // drawn wall that built before builds exactly the same:
     //   - on the part, with as little as minHeightSquat headroom (a hand just over a thigh);
     //   - on the plate, its low stations a brimmed squat stem, the tall ones the full wall.
-    const squat = squatWall(topPA, line, tris, zBed);
+    const squat = squatWall(topPA, line, tris, zBed, !!opts.plateOnly);
     if (squat) {
       out.push(...squat.tris);
       const tines = withTines(squat.top, squat.partAttached ? undefined : PROP.squatBrimH);
@@ -269,8 +286,9 @@ export function drawnWall(a, b, tris, zBed = 0, opts = {}) {
   }
   let height = 0;
   for (const p of line) height = Math.max(height, p[2] - PROP.gap - zBed);
+  const braces = withBraces(line, () => zBed);
   const tines = withTines(line);
-  return { ok: true, tris: out, length: len, height, tines, top: line };
+  return { ok: true, tris: out, length: len, height, tines, braces, top: line, floors: line.map(() => zBed) };
 }
 
 /**
@@ -279,10 +297,10 @@ export function drawnWall(a, b, tris, zBed = 0, opts = {}) {
  * in practice just over 1 mm of room, since floorLine skips surfaces within its 1 mm margin),
  * then the plate: stations from minHeightSquat to minHeight get a brimmed squat stem
  * (sweepSquat, what Auto builds near the bed), taller runs keep the flanged wall.
- * A station under minHeightSquat still refuses the whole line.
+ * A station under minHeightSquat still refuses the whole line. `plateOnly`: the plate only.
  */
-function squatWall(topPA, line, tris, zBed) {
-  if (topPA && topPA.length >= PROP.minStations && underAnOverhang(topPA, tris)) {
+function squatWall(topPA, line, tris, zBed, plateOnly = false) {
+  if (!plateOnly && topPA && topPA.length >= PROP.minStations && underAnOverhang(topPA, tris)) {
     const floor = floorLine(topPA, tris);
     // the wall's middle, between its floor and its top, is air (on an upward slope
     // the "floor" is the slope itself and this is solid)

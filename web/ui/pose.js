@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 /**
  * The pose: the rotate gizmo, the 90-degree and reset buttons, and "Lay a face
  * flat" with its hovered-face highlight. app.js's pointer dispatch calls
@@ -93,11 +94,30 @@ export function setLayPlacing(v) {
  *  default so casual clicks orbit instead of silently re-laying the part. */
 export const layActive = () => layPlacing;
 
+// "Show rotate rings": off hides the rings until turned back on (they cover the
+// part, #53); the 90deg buttons, Reset and Lay a face flat still turn it.
+// Remembered, storage optional, like "Highlight small overhangs".
+const RINGS_KEY = 'sf.showRings';
+let showRings = true;
+try { showRings = localStorage.getItem(RINGS_KEY) !== '0'; } catch { /* storage off */ }
+el('show-rings').checked = showRings;
+el('rings-hint').hidden = !showRings;
+el('show-rings').addEventListener('change', (e) => {
+  showRings = e.target.checked;
+  try { localStorage.setItem(RINGS_KEY, showRings ? '1' : '0'); } catch { /* storage off */ }
+  el('rings-hint').hidden = !showRings;
+  setGizmo();
+});
+
 /** Enable the rotate gizmo only when NOT drawing or laying a face flat --
- *  its handles would otherwise swallow the clicks those modes need. */
+ *  its handles would otherwise swallow the clicks those modes need -- and
+ *  only while "Show rotate rings" is on. */
 export function setGizmo() {
-  const on = !!part && !drawActive() && !layActive() && !removeActive();
+  const on = showRings && !!part && !drawActive() && !layActive() && !removeActive();
   gizmo.enabled = on;
+  // A disabled gizmo stops tracking hover, so a ring hovered last would stay
+  // "under the pointer" and app.js would swallow the next pick for it.
+  if (!on) gizmo.axis = null;
   const helper = gizmo.getHelper ? gizmo.getHelper() : gizmo;
   helper.visible = on;
 }
@@ -124,8 +144,8 @@ export function cancelLay() {
 }
 
 function syncLayUI() {
-  el('lay-face').textContent = layPlacing ? 'Click a face to lay it flat — Esc cancels'
-    : 'Lay a face flat';
+  el('lay-face').textContent = layPlacing ? t('Click a face to lay it flat — Esc cancels')
+    : t('Lay a face flat');
   el('lay-face').classList.toggle('active', layPlacing);
 }
 
@@ -233,3 +253,5 @@ export function layClick(e) {
   cancelLay();            // one-shot: disarm after a lay so the next click is safe
   shade();
 }
+
+window.addEventListener('languagechange', () => { el('lay-face').textContent = layPlacing ? t(t('Click a face to lay it flat — Esc cancels')) : t(t('Lay a face flat')); });

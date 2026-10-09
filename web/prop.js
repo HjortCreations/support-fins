@@ -32,6 +32,8 @@
  *   surface.js    seat a vertex; part surface height(s) above (x, y)
  *   contact.js    the contact line under an overhang, settled to exactly `gap`
  *   sweep.js      the wall solid: the upside-down T, and a part-attached wall
+ *   brace.js      ribs at the plate for a short wall that stands tall (the fill pass's)
+ *   ties.js       zigzag struts tying two neighbouring walls into one frame (the fill pass's)
  *   clearance.js  which stations can carry a wall (reach, certification, runs)
  *   tines.js      the grip comb along a wall's top
  *   tracks.js     where Suggest puts walls: straight patches, tracks, tube line
@@ -64,6 +66,8 @@ export { PROP } from './prop/config.js';
 export { splitRegion, tubeLine, patchTracks } from './prop/tracks.js';
 export { straightness, contactLine, lowerSag, contourTop, settleTop } from './prop/contact.js';
 export { footFor, profileHalf, sweep, sweepBetween } from './prop/sweep.js';
+export { BRACE, braceWall } from './prop/brace.js';
+export { TIE, tieWalls } from './prop/ties.js';
 export { surfaceHitsAt, surfaceZAt, surfaceZsAt } from './prop/surface.js';
 export { stationIsClear, stationCertified, pathToPlateIsClear, longestRun,
   withLowTails, insertFloorStations, welds } from './prop/clearance.js';
@@ -80,7 +84,7 @@ export function noProps() {
   return {
     triangles: [], props: [], served: 0, volume: 0,
     skipped: { noLine: 0, wanders: 0, stub: 0, blocked: 0,
-               degenerate: 0, buried: 0, weld: 0, sliver: 0 },
+               degenerate: 0, buried: 0, weld: 0, sliver: 0, onPart: 0 },
   };
 }
 
@@ -168,7 +172,12 @@ function buildPass(topo, result, rot, opts, raster) {
   // within a generation.
   let nextId = 0;
   const skipped = { noLine: 0, wanders: 0, stub: 0, blocked: 0,
-                    degenerate: 0, buried: 0, weld: 0, sliver: 0 };
+                    degenerate: 0, buried: 0, weld: 0, sliver: 0, onPart: 0 };
+  // Plate only (#218): every support stands on the plate. A line with part under it
+  // (the part-attached path's) is counted (onPart) and handed to the plate path,
+  // whose column probes trim the stations over the part and keep any stretch that
+  // stands on the plate -- never stilting through the part.
+  const plateOnly = opts.plateOnly === true;
   const v = [0, 0, 0];
 
   // The whole part, seated once, for the part-attached floor probe: the floor a
@@ -340,7 +349,9 @@ function buildPass(topo, result, rot, opts, raster) {
       // no longer a refusal: its wall is built and flagged inBore. Works on a COPY so
       // the plate path's own `line` is untouched.
       const tri0 = out.length;
-      const pa = buildPartAttached(line, partTris, topo, rot, off, out);
+      let pa = buildPartAttached(line, partTris, topo, rot, off, out);
+      // (Plate only: undo it and take the plate path, as a bed overhang would)
+      if (plateOnly && (pa.ok || pa.floored)) { out.length = tri0; skipped.onPart++; pa = {}; }
       if (pa.ok && patch.smallTube) {
         // A small tube's line is new to this path, so hold its wall to the same
         // measured clearance the plate path demands (see the sweep below): on

@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 /**
  * Hand-placed supports: the breakaway walls drawn in Draw mode (or the Suggest
  * "+ Add" augment) and sway braces stood with one click, their preview markers,
@@ -39,7 +40,7 @@ function geometryJob(kind, fields = {}) {
   return { kind, rot: [...rotM3.elements], result: { offset: { ...lastResult.offset } },
     options: { tunables: finOpts().tunables, sway: swayOpts(),
       draw: { tines: el('tines').checked, tineDensity: el('tine-density').valueAsNumber / 100,
-        layerHeight: el('layer-height').valueAsNumber } }, ...fields };
+        layerHeight: el('layer-height').valueAsNumber, plateOnly: el('plate-only').checked } }, ...fields };
 }
 
 export const drawMaterial = new THREE.MeshStandardMaterial({
@@ -301,17 +302,12 @@ function placeSway(hit) {
   rebuildDrawn();
 }
 
-/** Show the Draw controls (hint + Clear) only while hand-placement is live,
- *  and word the hint for what the click does: a support fin in Draw, a two-point
- *  wall in the Suggest "+ Add" augment. */
+/** Show Clear whenever hand-drawn walls are shown (they stay in Suggest after
+ *  "+ Add" is switched off), but the click hint only while a click places one. */
 export function syncDrawControls() {
   el('draw-controls').hidden = !drawShown();
-  el('draw-hint').innerHTML = 'Click <strong>two points</strong> across an overhang '
-    + '— straight onto the red faces — to lay a breakaway wall along that line. '
-    + (el('sway').checked
-      ? 'Click an <strong>upright side</strong> once to stand a sway brace against it. '
-      : '')
-    + '<kbd>Esc</kbd> or right-click cancels.';
+  el('draw-hint').hidden = !drawActive();
+  el('draw-hint').innerHTML = t('Click two points across an overhang — straight onto the red faces — to lay a breakaway wall along that line. Click an upright side once to stand a sway brace against it. Esc or right-click cancels.');
 }
 
 // Clear acts on the hand-drawn breakaway walls -- the thing both Draw and the

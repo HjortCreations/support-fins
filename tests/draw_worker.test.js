@@ -1,7 +1,7 @@
 import { LatestWorker } from '../web/worker-queue.js';
 import { buildDrawn } from '../web/draw-build.js';
 import { PERP } from '../web/fins/wedges.js';
-import { loadModel, analyze, fins, prop, blockTopo, assert, isClosed, isOriented, rotX } from './_util.js';
+import { loadModel, analyze, fins, prop, block, buildTopology, blockTopo, assert, isClosed, isOriented, rotX } from './_util.js';
 const ID = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 
 function settings(fn) {
@@ -23,6 +23,24 @@ Deno.test('Draw builds only the pad and seating, identical to the legacy prop pa
     }
   }
 }));
+
+Deno.test('Draw worker forwards Plate only and refuses supports standing on the part', async () => {
+  const pos = new Float32Array([...block(-40, 40, -10, 10, 0, 5), ...block(-40, 40, -10, 10, 35, 39)]);
+  const topo = buildTopology({ getAttribute: (k) => k === 'position' ? { array: pos } : null });
+  const options = { tunables: { nozzle: 0.4, wallLines: 2, baseThickness: 1, baseSpread: 0, baseStyle: 'taper' },
+    draw: { tines: false, plateOnly: false }, sway: {} };
+  const queue = new LatestWorker(new URL('../web/drawworker.js', import.meta.url));
+  try {
+    const job = { kind: 'build', rot: ID, result: { offset: { x: 0, y: 0, z: 0 } }, options,
+      requests: [{ a: [-30, 0, 35], b: [30, 0, 35] }] };
+    const off = await queue.run('build', topo, job);
+    assert(off.built.items[0].ok && off.built.items[0].info.partAttached);
+    const on = await queue.run('build', topo, { ...job,
+      options: { ...options, draw: { ...options.draw, plateOnly: true } } });
+    assert(!on.built.items[0].ok && /Plate only/.test(on.built.items[0].info.reason));
+    assert(!on.built.triangles.length, 'refused support leaked into export geometry');
+  } finally { queue.dispose(); }
+});
 
 class FakeWorker {
   messages = [];
