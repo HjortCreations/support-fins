@@ -1,6 +1,5 @@
 export default {
   "times and filament from {profile}; yours will differ": "Druckzeit und Materialverbrauch geschätzt mit {profile}; tatsächliche Werte hängen von Ihrem Drucker ab.",
-  "Download": "Herunterladen",
 "The filament you'll print in. PETG fuses to supports much harder than PLA, so PETG loosens the gaps, shrinks the tine bite, and gives the bed pad a gap instead of a bite. PLA keeps the tighter grip.": "Das Filament, mit dem gedruckt wird. PETG verschmilzt deutlich fester mit Stützen als PLA, daher vergrößert PETG die Abstände, verringert den Eingriff der Zacken und versieht den Stützfuß mit einem Spalt statt Verankerung. PLA behält den festeren Halt.",
 
   "The filament you'll print in. PETG fuses to supports much harder than PLA, so PETG loosens the gaps and gives the bed pad a gap instead of a tack. PLA keeps the tighter grip.": "Das Filament, mit dem gedruckt wird. PETG verschmilzt deutlich stärker mit Stützen als PLA, daher vergrößert PETG die Abstände und versieht den Stützfuß mit einem Spalt statt Haftung. PLA behält den festeren Halt.",
@@ -20,14 +19,12 @@ export default {
 
   "Click a fin to remove just that one. Esc or right-click cancels.": "Auf eine Finne klicken, um nur diese zu entfernen. Esc oder Rechtsklick bricht ab.",
   "Sideways clearance between the pad and the part's first layer. 0.12mm lets first-layer squish just close it, the way a slicer brim holds; bigger comes off easier and holds less. Under 0.1mm most slicers merge the gap and the pad welds on. 0 = no gap (Pad grip decides).": "Seitlicher Abstand zwischen Stützfuß und erster Schicht. 0.12 mm lässt die Quetschung der ersten Schicht die Lücke schließen (wie ein Brim); größer löst sich leichter, hält weniger. Unter 0.1 mm verschmelzen die meisten Slicer die Lücke. 0 = kein Spalt (Fußhaftung entscheidet).",
-  "Click this, then click a face to set it flat on the bed. Off by default so a stray click can't re-lay the part.": "Hier klicken und dann eine Fläche anklicken, um sie flach aufs Druckbett zu legen. Standardmäßig aus, um versehentliches Drehen zu verhindern.",
 
   'The tines grab onto the part and bend away when you snap the supports off.': 'Die Haltezacken greifen ins Bauteil und biegen sich weg, wenn man die Stützen abbricht.',
 
 'Windows · experimental': 'Windows · experimentell',
   'Built and tested against the engine, but not yet run in SolidWorks itself: tell us how it goes.': 'Gegen die Engine gebaut und getestet, aber noch nicht in SolidWorks selbst ausgeführt: Erfahrungen bitte melden.',
   'Unzip somewhere it can stay, right-click SupportFins\\install.bat ▸ Run as administrator, restart SolidWorks. In a part: Support Fins tab ▸ Support Fins.': 'An einen festen Ort entpacken, Rechtsklick auf SupportFins\\install.bat ▸ Als Administrator ausführen, SolidWorks neu starten. In einem Teil: Registerkarte Support Fins ▸ Support Fins.',
-  "Full coverage — every overhang": "Vollständige Abdeckung — alle Überhänge",
 
   'the upright sides are blocked by other parts of the model in this pose': 'die aufrechten Seiten sind in dieser Lage durch andere Modellteile blockiert.',
   'node support-fins.mjs part.stl (or deno run -RW support-fins.mjs part.stl) → part-fins.3mf, part + fins. --help lists every setting.': 'node support-fins.mjs part.stl (oder deno run -RW support-fins.mjs part.stl) → part-fins.3mf, Bauteil + Finnen. --help zeigt alle Optionen.',
@@ -73,7 +70,7 @@ export default {
   'How far the brace reaches out at the bed, as a share of its height. Deeper = stiffer, more plastic. Default 15%.': 'Wie weit die Rippe am Druckbett ausgreift, in Prozent der Höhe. Größer = steifer, aber mehr Material. Standard 15 %.',
   'Vertical distance between brace tines. Smaller = held tighter, more marks on the side. Default 6mm.': 'Vertikaler Abstand zwischen den Rippenzacken. Kleiner = festerer Halt, aber mehr Kontaktpunkte. Standard 6 mm.',
   'Height the brace tines start at. 0 = grip the whole height; raise it to tie on only above where the part starts to move.': 'Höhe, ab der die Rippenzacken greifen. 0 = über die gesamte Höhe; erhöhen, um erst ab dem wackeligen Bereich anzusetzen.',
-  "Stand tapered buttress ribs against the upright sides of a tall part, tied on with tines all the way up, so it doesn't drift or wobble as it grows. In Draw, click an upright side to add one.": 'Setzt konische Stützrippen an aufrechte Seiten hoher Bauteile, um Wackeln und Drift beim Drucken zu verhindern. Im Zeichnen-Modus auf eine aufrechte Seite klicken.',
+  "Brace tall parts with tapered fins and grip tines. Auto chooses upright sides. In Draw, click a feature once; small or sloping surfaces can use a fitted fin with a larger base.": 'Stabilisiert hohe Bauteile mit konischen Rippen und Haltezähnen. Auto wählt aufrechte Seiten. Im Zeichnen-Modus einmal auf ein Merkmal klicken; kleine oder geneigte Flächen können eine angepasste Rippe mit größerer Basis erhalten.',
   "Set this to the layer height you slice at. The grip tines are one layer tall so they snap off clean; if this doesn't match your slicer, the tines tear and leave marks. Default 0.2mm.": 'Stellen Sie dies auf die Schichthöhe Ihres Slicers ein. Die Haltezacken sind genau eine Schicht hoch, damit sie sauber abbrechen. Bei falscher Einstellung hinterlassen sie Spuren.',
   'How tightly to space the grip tines. Light = fewest marks (default), a per-wall floor keeps grip; Firm = dense comb / max grip for a tippy or tall part.': 'Abstand der Haltezacken. Leicht = minimale Abdrücke (Standard); Fest = dichte Zacken für maximalen Halt bei kippligen oder hohen Bauteilen.',
   'Tines fuse the support to the part so it grips instead of just propping. Off = plain breakaway wall.': 'Haltezacken verbinden die Stütze mit dem Bauteil, damit sie greift, statt nur zu stützen. Aus = einfache Stützwand.',
@@ -159,7 +156,6 @@ export default {
   "Area": "Fläche",
   "Bed contact": "Druckbettkontakt",
   "Fins": "Stützen (Finnen)",
-  "Bed pad": "Stützfuß (Pad)",
   "Analysis": "Analyse",
   "none": "keine",
   "fits": "passt",
@@ -274,8 +270,10 @@ export default {
   "Remove selected": "Ausgewählte entfernen",
 
   // Manual Draw hint
-  "Click two points across an overhang — straight onto the red faces — to lay a breakaway wall along that line. Click an upright side once to stand a sway brace against it. Esc or right-click cancels.":
-    "Klicken Sie zwei Punkte über einen Überhang – direkt auf die roten Flächen –, um eine Stützwand zu ziehen. Klicken Sie auf eine aufrechte Seite, um eine Stützrippe anzusetzen. Esc oder Rechtsklick bricht ab.",
+  "Click two points across an overhang — straight onto the red faces — to lay a breakaway wall along that line. Esc or right-click cancels.":
+    "Klicken Sie zwei Punkte über einen Überhang – direkt auf die roten Flächen –, um eine Stützwand zu ziehen. Esc oder Rechtsklick bricht ab.",
+  "Click a feature once to place a stabilizing fin. Small or sloping surfaces use a fitted fin or their nearest side edge. Turn Sway braces off to draw a wall with two points. Esc or right-click cancels.":
+    "Klicken Sie einmal auf ein Merkmal, um eine stabilisierende Rippe zu setzen. Kleine oder geneigte Flächen erhalten eine angepasste Rippe oder nutzen ihre nächste Seitenkante. Sway braces ausschalten, um eine Wand mit zwei Punkten zu zeichnen. Esc oder Rechtsklick bricht ab.",
 
   // Summaries & Readout Notes
   "off": "aus",

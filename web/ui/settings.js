@@ -173,6 +173,7 @@ function syncSway() {
   syncSectionSums();
 }
 el('sway').addEventListener('change', () => {
+  clearPreview(); // The next click belongs to the newly selected placement tool.
   // Switching it on opens its section: the switch is in the header, so a collapsed
   // section would otherwise turn the feature on and hide its settings in one click.
   if (el('sway').checked) el('sway').closest('details').open = true;

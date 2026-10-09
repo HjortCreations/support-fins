@@ -83,7 +83,7 @@ function buildGrid(topo) {
 }
 
 /** Closest point on triangle `f` to (px, py, pz), all in the mesh's own frame. */
-function triClosest(pos, f, px, py, pz) {
+export function triClosest(pos, f, px, py, pz) {
   const o = f * 9;
   const ax = pos[o], ay = pos[o + 1], az = pos[o + 2];
   const abx = pos[o + 3] - ax, aby = pos[o + 4] - ay, abz = pos[o + 5] - az;

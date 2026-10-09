@@ -10,6 +10,11 @@ deno test -A
 
 ## What's pinned (and why it exists)
 
+**`manual_sway.test.js`** -- small-wing fits above a wider body, top-to-side-edge
+contact, small low faces, sloping faces, insufficient grip-layer refusals, brace
+collision protection and worker ownership/export geometry with Cross reinforcement.
+Auto's small-part exclusion remains in force.
+
 The suite covers shipped regressions and new feature invariants. The root-level
 command above also runs the shared plugin and CLI tests, matching GitHub CI.
 

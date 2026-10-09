@@ -204,8 +204,10 @@ function updateDrawReadout(built, ms) {
   const lead = [];
   const help = [];
   if (!drawnWalls.length && !drawMsg) {
-    lead.push('Click two points across an overhang (a line lands right where you '
-      + 'draw it, red faces included) to lay a breakaway wall under it');
+    lead.push(el('sway').checked
+      ? 'Click a feature once to place a stabilizing fin; its base can grow to clear the model below'
+      : 'Click two points across an overhang (a line lands right where you '
+        + 'draw it, red faces included) to lay a breakaway wall under it');
   }
   if (ok.length) {
     help.push(tines
@@ -222,6 +224,13 @@ function updateDrawReadout(built, ms) {
     help.push(`${stilted.length === 1 ? 'One brace stands' : `${stilted.length} braces stand`} `
       + `up to ${Math.round(tallest)}mm before gripping the part — that much of it prints as a `
       + 'lone wall. Fine if it prints; rotate so that side reaches the plate if it wobbles.');
+  }
+  const fitted = ok.filter((w) => w.info?.fitted);
+  for (const w of fitted) {
+    const i = w.info;
+    if (i.baseOffset > 0) lead.push(`fin base enlarged: ${+i.baseOffset.toFixed(1)} mm outward to clear the model below`);
+    if (i.edgeMove > 0.5) lead.push(`fin placed at the feature’s side edge (${+i.edgeMove.toFixed(1)} mm from the click)`);
+    if (i.limitedGrip) lead.push(`small feature: ${i.tines} grip tine${i.tines === 1 ? '' : 's'}; less contact than a normal sway brace`);
   }
   if (bad && !drawBusy) {
     const one = drawnWalls.find((w) => !w.ok);

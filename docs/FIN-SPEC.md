@@ -213,7 +213,31 @@ over 7 layers. The printed numbers above still stand.
 | stilt limit (**auto only**) | auto won't stand a rib more than **40 mm**, or more than **40%** of its height, below its first tine, measured from the plate or from "Brace grip from" if that is higher. A brace placed **by hand builds anyway** and the readout says how far it stands before gripping | under its lowest grip a brace holds nothing and nothing holds it: it prints as a lone wall, free to wobble beside a part at its most delicate. So auto avoids it — but the human picks the pose and can see what the software can't, and this is the same suggest-don't-decide split as the rest of the tool |
 | clash | ≥ 1 mm of air from another brace (compared at matching heights) and from any prop wall or wedge (compared at the bed, where both are widest) | two supports fused into one piece no longer break away in pieces |
 | auto placement | up to 4 faces with bearings ≥ 60° apart, a rib per ~100 mm of face width, at the face's **tallest** columns | holds both axes; a rib at a gable's low end braces the half that wasn't moving |
-| manual | Draw mode: one click on an upright side; click a placed support to select it, Delete / "Remove selected" to take it out | |
+| manual | Draw with Sway enabled: one click on a feature; click a placed support to select it, Delete / "Remove selected" to take it out | small/sloping features use the fitted path described below |
+
+### Manual feature fitting
+
+An ordinary hand-placed brace must reach the clicked height (within its 1 mm top
+clearance). Otherwise Draw tries a local patch anchored to the clicked face,
+retaining the supporting-plane and 1.2 mm inward flatness limits while lowering
+the patch extent filter to 0.1 mm. Top/underside or steep faces can try up to eight
+nearby side patches; the readout reports a moved contact. Patch results are cached
+per pose, with a bounded 64-entry manual cache in the background Draw worker.
+
+Fitted fins retain their contact at the feature and try outward base offsets of
+0, 2, 4, 8, 16, 32, 64, 128 and 256 mm when the part blocks the plate route. This
+is a bounded search, not a minimum-material solution. Inner-edge overhangs and
+outward-growing edges are limited to 45 degrees. Part/foot collision tests and
+other-support clearance remain in force; a clash with an existing brace does not
+redirect placement onto an unrelated face.
+
+Manual fitting reaches the feature top without the original 1 mm top clearance,
+and uses layer-aligned grip rows. It requires at least one printable tine when
+Tines is enabled, rather than Auto's three-tine/30% rule. This permits small wings
+but supplies less contact, explicitly reported as `limitedGrip`. The long stilt
+below a high wing is reported too. Larger ribs cannot compensate for insufficient
+contact area. The original Auto thresholds and successful ordinary-brace geometry
+remain unchanged; these fitted shapes have not been physically print-validated.
 
 ## Nozzle profiles and base reinforcement
 

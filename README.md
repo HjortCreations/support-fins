@@ -135,7 +135,11 @@ breakaway gap and snaps off; only the tines touch the part.
 **Using it:** tick **Sway braces (tall parts)** in the options panel. It's off by default.
 - **Auto** braces the tallest sides for you: up to four faces facing different ways, so
   both axes are held, with each rib placed where its face reaches highest.
-- **Draw**: one click on an upright side stands a brace there. Click a support you placed
+- **Draw with Sway enabled**: one click on a feature places a stabilizing fin.
+  Small or sloping faces use a fitted fin; a top/underside can use its nearest side
+  edge. If the model below blocks the route to the plate, the base can grow outward.
+  The readout reports that growth, any moved contact and limited grip on small faces.
+  Switch Sway off to draw ordinary two-point walls. Click a support you placed
   to select it (amber), then press **Delete** or **Remove selected**; Undo brings it back.
 - Three settings appear while it's on: **Brace grip from** (height the tines start;
   0 = the whole height), **Brace tine spacing** (default 6 mm) and **Brace depth**

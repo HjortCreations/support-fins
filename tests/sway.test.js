@@ -110,7 +110,7 @@ Deno.test('sway: a short part gets no braces, and says why', () => {
   assert(typeof s.reason === 'string' && s.reason.length > 0, 'no reason given');
 });
 
-Deno.test('sway: Draw stands a brace on an upright side, and refuses the roof', () => {
+Deno.test('sway: Draw stands an ordinary brace on an upright side; roofs are not upright', () => {
   const { topo, res } = post();
   let side = -1, roof = -1;
   for (let f = 0; f < topo.nFaces; f++) {

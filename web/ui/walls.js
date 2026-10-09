@@ -6,7 +6,6 @@ import { t } from './i18n.js';
  * dispatch calls drawHover / drawClick while drawActive().
  */
 import * as THREE from 'three';
-import { faceIsUpright } from '../sway.js';
 import { LatestWorker } from '../worker-queue.js';
 import { el } from './dom.js';
 import { viewport, renderer, scene, camera, meshFrom, raycaster, pointer } from './scene.js';
@@ -307,7 +306,9 @@ function placeSway(hit) {
 export function syncDrawControls() {
   el('draw-controls').hidden = !drawShown();
   el('draw-hint').hidden = !drawActive();
-  el('draw-hint').innerHTML = t('Click two points across an overhang — straight onto the red faces — to lay a breakaway wall along that line. Click an upright side once to stand a sway brace against it. Esc or right-click cancels.');
+  el('draw-hint').textContent = el('sway').checked
+    ? t('Click a feature once to place a stabilizing fin. Small or sloping surfaces use a fitted fin or their nearest side edge. Turn Sway braces off to draw a wall with two points. Esc or right-click cancels.')
+    : t('Click two points across an overhang — straight onto the red faces — to lay a breakaway wall along that line. Esc or right-click cancels.');
 }
 
 // Clear acts on the hand-drawn breakaway walls -- the thing both Draw and the
@@ -360,10 +361,9 @@ export function drawClick(e) {
   const hit = pickFace(e);
   if (!hit) return;
   if (selectedWall) { selectedWall = null; syncSelection(); }
-  // With Sway braces on, a single click on an UPRIGHT side stands a brace there;
-  // a click on anything else still starts a two-point wall as before.
-  if (!drawStart && el('sway').checked
-      && faceIsUpright(topology, rotM3.elements, hit.faceIndex)) {
+  // Sway requests a one-click fin on the chosen feature; the worker fits its route.
+  // Two-point walls are available with Sway switched off.
+  if (!drawStart && el('sway').checked) {
     placeSway(hit);
     return;
   }
