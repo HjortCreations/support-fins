@@ -203,6 +203,12 @@ function updateDrawReadout(built, ms) {
       + `up to ${Math.round(tallest)}mm before gripping the part — that much of it prints as a `
       + 'lone wall. Fine if it prints; rotate so that side reaches the plate if it wobbles.');
   }
+  const fitted = ok.filter((w) => w.info?.fitted);
+  for (const w of fitted) {
+    const i = w.info;
+    if (i.baseOffset > 0) lead.push(`fin base enlarged: ${+i.baseOffset.toFixed(1)} mm outward to clear the model below`);
+    if (i.edgeMove > 0.5) lead.push(`fin placed at the feature’s side edge (${+i.edgeMove.toFixed(1)} mm from the click)`);
+  }
   if (bad && !drawBusy) {
     const one = drawnWalls.find((w) => !w.ok);
     lead.push(`${bad} wall${bad === 1 ? '' : 's'} couldn’t build here`

@@ -284,3 +284,19 @@ are inset 0.005 mm; overlapping 0.01 mm joints connect them below the lower roof
 without widening the envelope. Wedge and Sway feet use inscribed rounded polygons.
 Profile goldens intentionally record the browser foot-shape change; legacy
 engine goldens remain unchanged. Physical large-nozzle printing is unvalidated.
+
+## Explicit fitted-feature placement
+
+Ordinary Draw keeps upright side → brace / other faces → two-point wall, so Sway
+and walls can coexist while Auto's braces stay on. **Fit feature** explicitly
+selects one-click fitted fins. Each request stores that choice; undo, redo and
+tool changes retain it. A valid ordinary brace shortened by a ledge is returned
+before fitting, even below the click height.
+
+Only when no ordinary brace builds does fitting grow a bounded seed patch or use
+its nearest side edge, retrying outward base offsets 0/2/4/8/16/32/64/128/256 mm
+for a blocked plate route. Model/foot/other-support checks and printable slopes
+remain enforced. With Tines on, at least SWAY.minTines (three) printable tines
+must fit. One or two are refused with their count and minimum; increasing wall
+size cannot replace contact. Stilt, base offset and moved contact are reported.
+These fitted shapes have not been physically print-validated.

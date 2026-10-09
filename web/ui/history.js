@@ -34,7 +34,7 @@ let redoStack = [];
 // the printer, saved across visits, not an edit to this part.
 const FORM_IDS = ['material', 'thr', 'tines', 'tine-density', 'layer-height', 'gap',
   'bed-pad', 'pad-h', 'pad-gap', 'pad-grip', 'pad-margin', 'sway', 'sway-from',
-  'sway-spacing', 'sway-depth', 'nozzle', 'wall-lines', 'rounded-feet', 'cutout', 'coverage', 'plate-only', 'highlight-small', 'show-layers',
+  'sway-spacing', 'sway-depth', 'sway-fit', 'nozzle', 'wall-lines', 'rounded-feet', 'cutout', 'coverage', 'plate-only', 'highlight-small', 'show-layers',
   'show-rings', 'nav-preset'];
 const readForm = () => Object.fromEntries(FORM_IDS.map((id) => {
   const f = el(id);
@@ -49,7 +49,7 @@ function snapshot() {
   const q = part.quaternion;
   return {
     quat: [q.x, q.y, q.z, q.w],
-    walls: drawnWalls.map((w) => ({ kind: w.kind, face: w.face, historyKey: w.historyKey ??= Symbol(), a: w.a.clone(), b: w.b?.clone() })),
+    walls: drawnWalls.map((w) => ({ kind: w.kind, face: w.face, fitFeature: w.fitFeature, historyKey: w.historyKey ??= Symbol(), a: w.a.clone(), b: w.b?.clone() })),
     load: loadDir ? loadDir.clone() : null,
     finMode, finsVisible, drawAugment,
     removedSigs: [...removedSigs],
@@ -125,7 +125,7 @@ function restoreForm(form) {
 
 function restoreState(s) {
   part.quaternion.set(s.quat[0], s.quat[1], s.quat[2], s.quat[3]);
-  setDrawnWalls(s.walls.map((w) => ({ kind: w.kind, face: w.face, historyKey: w.historyKey, a: w.a.clone(), b: w.b?.clone(),
+  setDrawnWalls(s.walls.map((w) => ({ kind: w.kind, face: w.face, fitFeature: w.fitFeature, historyKey: w.historyKey, a: w.a.clone(), b: w.b?.clone(),
                                        ok: false, info: null })));
   replaceLoadDir(s.load ? s.load.clone() : null);
   restoreRemovals(s.removedSigs);

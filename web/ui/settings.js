@@ -159,10 +159,12 @@ function syncSway() {
   el('sway-from-fld').hidden = !on || !el('tines').checked;
   el('sway-spacing-fld').hidden = !on || !el('tines').checked;
   el('sway-depth-fld').hidden = !on;
+  el('sway-fit-fld').hidden = !on;
   syncDrawControls();
   syncSectionSums();
 }
 el('sway').addEventListener('change', () => {
+  clearPreview();
   // Switching it on opens its section: the switch is in the header, so a collapsed
   // section would otherwise turn the feature on and hide its settings in one click.
   if (el('sway').checked) el('sway').closest('details').open = true;
@@ -170,6 +172,7 @@ el('sway').addEventListener('change', () => {
   refreshFins();
 });
 el('tines').addEventListener('change', syncSway);
+el('sway-fit').addEventListener('change', () => { clearPreview(); syncDrawControls(); });
 for (const id of ['sway-from', 'sway-spacing', 'sway-depth']) {
   el(id).addEventListener('input', () => debouncedRefresh());
 }

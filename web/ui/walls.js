@@ -135,7 +135,7 @@ export function rebuildDrawn() {
   const started = performance.now();
   const snapshot = [...drawnWalls];
   part.updateMatrixWorld();
-  const requests = snapshot.map((w) => ({ kind: w.kind, face: w.face,
+  const requests = snapshot.map((w) => ({ kind: w.kind, face: w.face, fitFeature: w.fitFeature,
     a: part.localToWorld(w.a.clone()).toArray(),
     b: w.b ? part.localToWorld(w.b.clone()).toArray() : undefined }));
   const job = geometryJob('build', { requests, avoid: autoSupports() });
@@ -313,7 +313,7 @@ function placeSway(hit) {
   const pendingHistory = histPush(true);
   part.updateMatrixWorld();
   drawnWalls.push({ kind: 'sway', face: hit.faceIndex,
-    a: part.worldToLocal(hit.point.clone()),
+    a: part.worldToLocal(hit.point.clone()), fitFeature: el('sway-fit').checked,
     justPlaced: true, pendingHistory, historyKey: Symbol() });
   drawMsg = '';
   rebuildDrawn();
@@ -323,8 +323,11 @@ function placeSway(hit) {
  *  "+ Add" is switched off), but the click hint only while a click places one. */
 export function syncDrawControls() {
   el('draw-controls').hidden = !drawShown();
-  el('draw-hint').hidden = !drawActive();
-  el('draw-hint').textContent = t('Click two points across an overhang — straight onto the red faces — to lay a breakaway wall along that line. Click an upright side once to stand a sway brace against it. Esc or right-click cancels.');
+  el('draw-hint').textContent = el('sway').checked
+    ? el('sway-fit').checked
+      ? t('Click a feature once to fit a stabilizing fin. At least three grip tines must fit. Turn Fit feature off to draw ordinary walls and braces. Esc or right-click cancels.')
+      : t('Click an upright side once for a sway brace, or two points across an overhang for a wall. Esc or right-click cancels.')
+    : t('Click two points across an overhang — straight onto the red faces — to lay a breakaway wall along that line. Esc or right-click cancels.');
 }
 
 // Clear acts on the hand-drawn breakaway walls -- the thing both Draw and the
@@ -384,8 +387,9 @@ export function drawClick(e) {
   const hit = pickFace(e);
   if (!hit) return;
   if (selectedWall) { selectedWall = null; syncSelection(); }
-  // Preserve the upright-face gate; only generation moves off-thread.
-  if (!drawStart && el('sway').checked && faceIsUpright(topology, rotM3.elements, hit.faceIndex)) {
+  // Fitting is an explicit tool; ordinary Draw keeps both walls and braces.
+  if (!drawStart && el('sway').checked && (el('sway-fit').checked
+      || faceIsUpright(topology, rotM3.elements, hit.faceIndex))) {
     placeSway(hit);
     return;
   }

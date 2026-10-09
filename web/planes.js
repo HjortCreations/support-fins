@@ -231,7 +231,7 @@ function worldVertex(pos, o, rot, offset, out) {
  * (n, u, t) is orthonormal and right-handed, which is what let the old leaning-fin
  * extruder emit consistent outward winding without a per-solid orientation check.
  */
-function fitPatch(topo, g, rn, rot, offset, stats = null) {
+function fitPatch(topo, g, rn, rot, offset, stats = null, minH = MIN_PATCH_H, minW = MIN_PATCH_W) {
   const { pos, area } = topo;
 
   // area-weighted mean normal: a patch's big faces describe its plane, and a fan
@@ -309,8 +309,8 @@ function fitPatch(topo, g, rn, rot, offset, stats = null) {
     return null;
   };
   if (devIn < -FLAT_TOL_IN) return fail('notFlat');
-  if (t1 - t0 < MIN_PATCH_H) return fail('tooShort');
-  if (u1 - u0 < MIN_PATCH_W) return fail('tooNarrow');
+  if (t1 - t0 < minH) return fail('tooShort');
+  if (u1 - u0 < minW) return fail('tooNarrow');
 
   // where this site sits, for keeping chosen fins apart in space
   const umid = (u0 + u1) / 2, tmid = (t0 + t1) / 2;
@@ -329,6 +329,47 @@ function fitPatch(topo, g, rn, rot, offset, stats = null) {
     flatness: Math.max(devOut, -devIn),
     tris,
   };
+}
+
+/** Local, seed-plane growth for a clicked feature; Auto's size/lean filters do not apply. */
+export function manualPatchAtFace(topo, rot, offset, seed) {
+  const { pos, nrm, area } = topo;
+  if (!Number.isInteger(seed) || seed < 0 || seed >= topo.nFaces) return { patch: null, boundary: [] };
+  const rn = new Float64Array(nrm.length), seen = new Set([seed]), faces = [seed];
+  const normal = (f) => {
+    const i = f * 3, x = nrm[i], y = nrm[i + 1], z = nrm[i + 2];
+    rn[i] = rot[0] * x + rot[3] * y + rot[6] * z;
+    rn[i + 1] = rot[1] * x + rot[4] * y + rot[7] * z;
+    rn[i + 2] = rot[2] * x + rot[5] * y + rot[8] * z;
+  };
+  normal(seed);
+  const n = rn.slice(seed * 3, seed * 3 + 3), v = [0, 0, 0];
+  let d = 0, total = area[seed];
+  for (let k = 0; k < 3; k++) {
+    worldVertex(pos, seed * 9 + k * 3, rot, offset, v);
+    d += v.reduce((s, x, i) => s + x * n[i], 0) / 3;
+  }
+  const { start, nbr } = faceAdjacency(topo), boundary = new Set();
+  const agree = Math.cos(NORMAL_AGREE_DEG * Math.PI / 180);
+  for (let j = 0; j < faces.length; j++) {
+    const f = faces[j];
+    for (let e = start[f]; e < start[f + 1]; e++) {
+      const g = nbr[e];
+      if (seen.has(g)) continue;
+      seen.add(g); normal(g);
+      let lo = Infinity, hi = -Infinity;
+      for (let k = 0; k < 3; k++) {
+        worldVertex(pos, g * 9 + k * 3, rot, offset, v);
+        const dev = v.reduce((s, x, i) => s + x * n[i], -d);
+        lo = Math.min(lo, dev); hi = Math.max(hi, dev);
+      }
+      const dot = n.reduce((s, x, i) => s + x * rn[g * 3 + i], 0);
+      if (dot < agree || lo < -FLAT_TOL_IN || hi > GROW_SLACK) { boundary.add(g); continue; }
+      faces.push(g); total += area[g];
+    }
+  }
+  return { patch: fitPatch(topo, { faces, area: total }, rn, rot, offset, null, 0.1, 0.1),
+    boundary: [...boundary] };
 }
 
 /**

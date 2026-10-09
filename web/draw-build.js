@@ -11,7 +11,7 @@ export function buildDrawn(topo, result, rot, requests, options, avoid = {}, par
   for (let i = 0; i < requests.length; i++) {
     const w = requests[i];
     const r = w.kind === 'sway'
-      ? swayAtFace(topo, result, rot, w.face, w.a, options.sway, { braces, walls: avoid.walls ?? [] })
+      ? swayAtFace(topo, result, rot, w.face, w.a, { ...options.sway, fitFeature: w.fitFeature === true }, { braces, walls: avoid.walls ?? [] })
       : candidates?.[i] ?? drawnWall(w.a, w.b, tris, 0, { ...options.draw, topo, rot, offset: result.offset });
     const triStart = triangles.length / 3;
     if (r.ok) {

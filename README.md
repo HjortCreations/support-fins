@@ -97,8 +97,17 @@ breakaway gap and snaps off; only the tines touch the part.
 **Using it:** tick **Sway braces (tall parts)** in the options panel. It's off by default.
 - **Auto** braces the tallest sides for you: up to four faces facing different ways, so
   both axes are held, with each rib placed where its face reaches highest.
-- **Draw**: one click on an upright side stands a brace there. Click a support you placed
-  to select it (amber), then press **Delete** or **Remove selected**; Undo brings it back.
+- **Draw with Sway enabled** keeps both tools available: click an upright side
+  once for an ordinary brace, or two points across an overhang for a wall. A valid
+  ordinary brace shortened by a ledge is kept at that shorter height.
+- Enable **Fit feature** explicitly to fit a small or sloping face with one click;
+  a top/underside can use its nearest side edge. Its base can grow outward to clear
+  the model below. At least **three** printable grip tines must fit; a larger rib
+  does not replace sufficient contact. If necessary, reduce Brace tine spacing.
+  The readout reports base growth and moved contact. Switching this tool off leaves
+  Auto's Sway braces enabled and keeps existing fitted fins fitted.
+  Click a placed support to select it (amber), then press **Delete** or
+  **Remove selected**; Undo brings it back. Rejected placements add no undo step.
 - Three settings appear while it's on: **Brace grip from** (height the tines start;
   0 = the whole height), **Brace tine spacing** (default 6 mm) and **Brace depth**
   (% of height at the bed; default 15%).
