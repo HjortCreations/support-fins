@@ -62,6 +62,17 @@ work fails to show a gain. Auto and Sway placement decisions remain ordered.
 See [performance and CPU policy](docs/PERFORMANCE.md) for measurements, tradeoffs and
 reproducible browser tests.
 
+### Nozzle-sized walls
+
+For large nozzles, set **Walls → Nozzle** and choose **2, 4, 6 or 8 lines**.
+Wall bodies use `nozzle × 1.1 × lines`; contacts remain one bead wide.
+Sway braces retain their print-tested height-based thickness as a minimum.
+Set **Layer height** to match the slicer (0.08–2.4 mm). The browser selects
+0.4 mm and two lines; engine/plugin callers without a profile retain legacy
+geometry. See [the nozzle guide](docs/NOZZLE-PROFILES.md) for dimensions,
+clearance limits and export checks. Nozzle profiles are geometry-tested;
+the new large-nozzle profiles have not been physically print-validated.
+
 ### Sway braces for tall parts
 
 Tall, slender parts have a problem the fins were never built for: nothing overhangs, but
