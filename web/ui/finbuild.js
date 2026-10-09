@@ -71,8 +71,8 @@ export function activeWalls() {
 // DOM/three.js dependency, so it runs in the shared background coordinator: the
 // current fins stay on screen, greyed, while the new ones compute, and the UI
 // stays live. A generation counter drops the reply from a pose that has since
-// been superseded. If a worker fails, report it and keep export blocked until a
-// successful retry; never run heavy support generation on the UI thread.
+// been superseded. Auto/seating gets one fresh-worker retry; a second failure
+// reports an error and blocks export. Heavy support generation stays off-thread.
 let finGen = 0;              // bumped per request; a reply with a stale id is ignored
 let finT0 = 0;               // start time of the in-flight build, for the readout timing
 let lastOpts = null;

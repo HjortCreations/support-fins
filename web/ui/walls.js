@@ -12,7 +12,7 @@ import { el } from './dom.js';
 import { setBuildPending } from './build-status.js';
 import { viewport, renderer, scene, camera, meshFrom, ifaceMaterial, raycaster, pointer } from './scene.js';
 import { removedIds } from './remove.js';
-import { histPush } from './history.js';
+import { histPush, discardPlacementHistory } from './history.js';
 import { updateReadout } from './readout.js';
 import { pickFace } from './pose.js';
 import { part, topology, rotM3, lastResult, updateFit } from './part.js';
@@ -147,10 +147,12 @@ export function rebuildDrawn() {
     snapshot.forEach((w, i) => {
       Object.assign(w, reply.built.items[i]);
       if (w.justPlaced && !w.ok) {
+        discardPlacementHistory(w.pendingHistory, w.historyKey);
         failedNew.push(w);
         drawMsg = `couldn't place that support: ${w.info.reason}`;
       }
       delete w.justPlaced;
+      delete w.pendingHistory;
     });
     drawnWalls = drawnWalls.filter((w) => !failedNew.includes(w));
     if (drawnMesh) { scene.remove(drawnMesh); drawnMesh.geometry.dispose(); }
@@ -271,9 +273,10 @@ function updatePreview(hitPoint) {
 
 /** Store the request immediately; certify it asynchronously before export. */
 function placeSecondPoint(hitPoint) {
-  histPush();
+  const pendingHistory = histPush();
   part.updateMatrixWorld();
-  drawnWalls.push({ a: drawStart.clone(), b: part.worldToLocal(hitPoint.clone()), justPlaced: true });
+  drawnWalls.push({ a: drawStart.clone(), b: part.worldToLocal(hitPoint.clone()),
+    justPlaced: true, pendingHistory, historyKey: Symbol() });
   drawMsg = '';
   clearPreview();
   rebuildDrawn();
@@ -307,10 +310,11 @@ function autoSupports() {
 
 /** One click queues a sway brace; geometry and certification run off-thread. */
 function placeSway(hit) {
-  histPush();
+  const pendingHistory = histPush();
   part.updateMatrixWorld();
   drawnWalls.push({ kind: 'sway', face: hit.faceIndex,
-    a: part.worldToLocal(hit.point.clone()), justPlaced: true });
+    a: part.worldToLocal(hit.point.clone()),
+    justPlaced: true, pendingHistory, historyKey: Symbol() });
   drawMsg = '';
   rebuildDrawn();
 }

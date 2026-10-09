@@ -26,8 +26,8 @@ export function setFinsVisible(v) { finsVisible = v; }
 // vertical. A user who loads a part and exports should get the support that
 // supports.
 //
-// Draw avoids unsolicited Auto generation after importing a large model.
-export let finMode = 'draw';
+// Preserve Auto as the upstream browser default; restored form choices still apply.
+export let finMode = 'auto';
 export function setFinMode(v) { finMode = v; }
 // FULL COVERAGE ('full', fins/fill.js) is Auto plus walls under the red Auto left
 // bare, so everything Auto offers -- the coverage slider, sway braces, per-fin

@@ -34,7 +34,7 @@ entire point, not a refinement.**
 
 ## Why the tines must be horizontal
 
-Browser placement defaults to Draw. Its seating/pad pass does not place automatic
+Browser placement keeps the Auto default. In Draw, the seating/pad pass does not place automatic
 supports. Draw geometry and previews run off-thread; independent ordinary-wall
 candidates can run in parallel, while Sway acceptance, earlier-brace avoidance and
 export triangle ranges retain their original request order. Worker count never

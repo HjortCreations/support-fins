@@ -30,6 +30,20 @@ export class LatestWorker {
     this.pending.clear(); this.latest.clear();
   }
   fail(error) {
+    const current = this.active;
+    // Auto/seating gets one fresh-worker retry. Preserve pending Draw work, and
+    // never retry an obsolete pose or execute heavy geometry on the UI thread.
+    if (current?.channel === 'auto' && ((current.attempts ?? 0) < 1
+        || this.latest.get('auto') !== current.id)) {
+      this.worker?.terminate(); this.worker = null; this.sentModel = null;
+      this.active = null;
+      if (this.latest.get('auto') === current.id) {
+        current.attempts = 1;
+        this.pending.set('auto', current);
+      } else current.resolve(null);
+      this.pump();
+      return;
+    }
     this.active?.reject(error); this.active = null;
     for (const q of this.pending.values()) q.reject(error);
     this.pending.clear(); this.latest.clear();
@@ -51,6 +65,11 @@ export class LatestWorker {
           const current = this.active;
           if (!current || data.id !== current.id) return;
           this.active = null;
+          if (data.error && current.channel === 'auto') {
+            this.active = current;
+            this.fail(new Error(data.error));
+            return;
+          }
           if (data.error) current.reject(new Error(data.error));
           else current.resolve(this.latest.get(current.channel) === current.id ? data : null);
           this.pump();
