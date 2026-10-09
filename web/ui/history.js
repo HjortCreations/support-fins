@@ -5,6 +5,7 @@
  * (walls.js, strength.js, settings.js, pose.js); history never assigns to them.
  */
 import { el } from './dom.js';
+import { retractPlacement } from '../placement-history.js';
 import { controls } from './scene.js';
 import { removedSigs, restoreRemovals, syncRemoveUI } from './remove.js';
 import { loadDir, replaceLoadDir, updateLoadArrowMesh, syncLoadUI } from './strength.js';
@@ -48,7 +49,7 @@ function snapshot() {
   const q = part.quaternion;
   return {
     quat: [q.x, q.y, q.z, q.w],
-    walls: drawnWalls.map((w) => ({ kind: w.kind, face: w.face, a: w.a.clone(), b: w.b?.clone() })),
+    walls: drawnWalls.map((w) => ({ kind: w.kind, face: w.face, historyKey: w.historyKey ??= Symbol(), a: w.a.clone(), b: w.b?.clone() })),
     load: loadDir ? loadDir.clone() : null,
     finMode, finsVisible, drawAugment,
     removedSigs: [...removedSigs],
@@ -88,9 +89,17 @@ export function commitGesture(s, changed) {
 /** Capture state BEFORE a mutation. A fresh action invalidates the redo stack. */
 export function histPush() {
   if (!part) return;
-  undoStack.push(snapshot());
+  const state = snapshot(), token = { state, redoBefore: [...redoStack] };
+  undoStack.push(state);
   if (undoStack.length > 100) undoStack.shift();
   redoStack.length = 0;
+  syncHistButtons();
+  return token;
+}
+
+/** Remove exactly a rejected asynchronous placement, preserving later edits. */
+export function discardPlacementHistory(token, historyKey) {
+  retractPlacement(undoStack, redoStack, token, historyKey);
   syncHistButtons();
 }
 
@@ -115,7 +124,7 @@ function restoreForm(form) {
 
 function restoreState(s) {
   part.quaternion.set(s.quat[0], s.quat[1], s.quat[2], s.quat[3]);
-  setDrawnWalls(s.walls.map((w) => ({ kind: w.kind, face: w.face, a: w.a.clone(), b: w.b?.clone(),
+  setDrawnWalls(s.walls.map((w) => ({ kind: w.kind, face: w.face, historyKey: w.historyKey, a: w.a.clone(), b: w.b?.clone(),
                                        ok: false, info: null })));
   replaceLoadDir(s.load ? s.load.clone() : null);
   restoreRemovals(s.removedSigs);
