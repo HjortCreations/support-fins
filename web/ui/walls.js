@@ -322,6 +322,7 @@ function placeSway(hit) {
 /** Show Clear whenever hand-drawn walls are shown (they stay in Suggest after
  *  "+ Add" is switched off), but the click hint only while a click places one. */
 export function syncDrawControls() {
+  el('sway-fit-fld').hidden = !el('sway').checked || !drawActive();
   el('draw-controls').hidden = !drawShown();
   el('draw-hint').textContent = el('sway').checked
     ? el('sway-fit').checked
