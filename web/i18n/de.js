@@ -1,4 +1,13 @@
 export default {
+  "Middle-drag orbits, Shift + middle-drag pans, wheel zooms.": "Mittlere Maustaste ziehen dreht die Ansicht, Umschalt + mittlere Maustaste ziehen verschiebt, Mausrad zoomt.",
+  "Middle-drag orbits, Ctrl + middle-drag pans, wheel zooms.": "Mittlere Maustaste ziehen dreht die Ansicht, Strg + mittlere Maustaste ziehen verschiebt, Mausrad zoomt.",
+  "Right-drag orbits, middle- or Ctrl + right-drag pans, wheel zooms.": "Rechte Maustaste ziehen dreht die Ansicht, mittlere Maustaste oder Strg + rechte Maustaste ziehen verschiebt, Mausrad zoomt.",
+  "Shift + middle-drag orbits, middle-drag pans, wheel zooms.": "Umschalt + mittlere Maustaste ziehen dreht die Ansicht, mittlere Maustaste ziehen verschiebt, Mausrad zoomt.",
+  "Left-drag orbits, right-drag pans, wheel zooms.": "Linke Maustaste ziehen dreht die Ansicht, rechte Maustaste ziehen verschiebt, Mausrad zoomt.",
+  "Default": "Standard",
+  "Mouse": "Maus",
+  "Show rotate rings": "Drehringe anzeigen",
+  "The rotate rings around the part. Off hides them; Rotate 90°, Reset and Lay a face flat still turn the part.": "Die Drehringe um das Bauteil. Aus blendet sie aus; 90° drehen, Zurücksetzen und Fläche flach auflegen drehen das Bauteil weiterhin.",
   "times and filament from {profile}; yours will differ": "Druckzeit und Materialverbrauch geschätzt mit {profile}; tatsächliche Werte hängen von Ihrem Drucker ab.",
   "Download": "Herunterladen",
 "The filament you'll print in. PETG fuses to supports much harder than PLA, so PETG loosens the gaps, shrinks the tine bite, and gives the bed pad a gap instead of a bite. PLA keeps the tighter grip.": "Das Filament, mit dem gedruckt wird. PETG verschmilzt deutlich fester mit Stützen als PLA, daher vergrößert PETG die Abstände, verringert den Eingriff der Zacken und versieht den Stützfuß mit einem Spalt statt Verankerung. PLA behält den festeren Halt.",
@@ -191,7 +200,6 @@ export default {
   "Drag the rings to turn it, or:": "Ringe zum Drehen ziehen, oder:",
   "Lay a face flat": "Fläche flach auflegen",
   "Click a face to lay it flat — Esc cancels": "Fläche anklicken zum Auflegen – Esc bricht ab",
-  "Click this, then click a face to set it flat on the bed. Off by default so a stray click can't re-lay the part.": "Hier klicken und dann eine Fläche anklicken, um sie flach aufs Druckbett zu legen.",
   "Show layers": "Schichten anzeigen",
   "Suggest orientation": "Ausrichtung vorschlagen",
   "Suggest orientation ▾": "Ausrichtung vorschlagen ▾",
@@ -216,6 +224,7 @@ export default {
   "The load runs along the layers — the strong direction. Good.": "Die Last verläuft entlang der Schichten — die stabile Richtung. Gut.",
   "The load partly crosses the layers.": "Die Last kreuzt die Schichten teilweise.",
   "The load pulls straight across the layers — where prints split first.": "Die Last zieht quer zu den Schichten — hier reißen Drucke zuerst.",
+  "This is about the strongest printable orientation for this load — a better-aligned pose wouldn’t sit on the bed.": "Das ist für diese Last etwa die stabilste druckbare Lage — eine besser ausgerichtete Lage stünde nicht auf dem Druckbett.",
 
   // Right Rail: Sections & Controls
   "Setup": "Grundeinstellungen",
