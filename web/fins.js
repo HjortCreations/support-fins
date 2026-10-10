@@ -34,7 +34,7 @@
  */
 import { floatingPieces } from './pieces.js';
 import { findWallPatches } from './planes.js';
-import { buildProps, noProps, PROP } from './prop.js';
+import { buildProps, crestOn, crestPart, noProps, PROP } from './prop.js';
 import { buildSwayBraces } from './sway.js';
 import { CUT, CUTOUT_PATTERNS } from './cutout.js';
 import { FIN } from './fins/config.js';
@@ -96,6 +96,8 @@ export function applyTunables(t) {
   set(PERP, 'gap', t.propGap);
   // Not a clearance, but module state with the same Worker problem.
   if (CUTOUT_PATTERNS.includes(t.cutout)) CUT.pattern = t.cutout;
+  // So is the interface crest's mode (GitHub #21, prop/crest.js).
+  if ([false, 'flat', 'all'].includes(t.iface)) PROP.iface = t.iface;
 }
 
 /**
@@ -111,6 +113,7 @@ export function applyTunables(t) {
  */
 export function buildFins(topo, result, rot, opts = {}) {
   const built = buildFinsAndBraces(topo, result, rot, opts);
+  crestPart(null);   // the crest's part is only for this build (a Worker keeps no mesh)
   // A piece of the part that starts in mid-air (a cut clean through, a loose
   // body) needs saying no matter what was placed: see floatingPieces.
   built.floating = floatingPieces(topo, result, rot);
@@ -119,6 +122,8 @@ export function buildFins(topo, result, rot, opts = {}) {
 
 function buildFinsAndBraces(topo, result, rot, opts = {}) {
   applyTunables(opts.tunables);
+  // the interface crest's 'flat' test reads the underside off the seated part
+  crestPart(crestOn() ? seatedPartTris(topo, rot, result.offset) : null, opts.layerHeight);
   const built = buildFinsCore(topo, result, rot, opts);
   // Sway braces are an optional ADD-ON to whatever the mode placed (sway.js): a
   // tall part still needs its overhangs held, and bracing its sides is a
@@ -129,7 +134,7 @@ function buildFinsAndBraces(topo, result, rot, opts = {}) {
   // one of those, a brace is no longer a piece that snaps off by itself.
   const walls = (built.fins ?? []).map((f) => f.line).filter((l) => Array.isArray(l) && l.length);
   const sw = buildSwayBraces(topo, result, rot,
-    { ...opts.sway, tines: opts.tines, layerHeight: opts.layerHeight, avoid: { walls } });
+    { ...opts.sway, tines: opts.tines, layerHeight: opts.layerHeight, iface: PROP.iface, avoid: { walls } });
   // Each brace also gets a fin record: the Auto view draws and exports only the
   // triangles some record claims (per-fin removal), so an unrecorded brace would
   // be counted in the readout but never shown or written out.

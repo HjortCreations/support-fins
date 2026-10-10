@@ -8,7 +8,7 @@ import { buildFins, FIN, PAD } from '../fins.js';
 import { PROP } from '../prop.js';
 import { CUT } from '../cutout.js';
 import { el } from './dom.js';
-import { scene, meshFrom } from './scene.js';
+import { scene, meshFrom, ifaceMaterial } from './scene.js';
 import {
   removeMode, syncRemoveUI, cancelRemove, clearFinHover, adoptFins, forgetFins,
 } from './remove.js';
@@ -29,7 +29,7 @@ export let padTris = [];
 export function setFinTris(tris) {
   if (finMesh) { scene.remove(finMesh); finMesh.geometry.dispose(); }
   finTris = tris;
-  finMesh = meshFrom(finTris, finMaterial);
+  finMesh = meshFrom(finTris, finMaterial, ifaceMaterial);
 }
 
 export const finMaterial = new THREE.MeshStandardMaterial({
@@ -45,12 +45,17 @@ export const padMaterial = new THREE.MeshStandardMaterial({
 export let lastBuilt = null;       // last buildFins result, kept for the bed pad + seating readout
 /** The walls + pad the CURRENT mode contributes to the export and the fit check. */
 export function activeAdded() {
+  return [...activeWalls(), ...padTris];
+}
+
+/** The walls alone (activeAdded without the pad). */
+export function activeWalls() {
   // Both auto modes bake their geometry into finTris (refreshFins' else branch):
   // Suggest → gripping fins + fallback props, Combined fin → gripping fins only.
   // Only Draw leaves it empty and exports the hand-drawn walls instead.
   const auto = finMode === 'draw' ? [] : finTris;
   const drawn = drawShown() ? drawnTris : [];
-  return [...auto, ...drawn, ...padTris];
+  return [...auto, ...drawn];
 }
 
 /**
@@ -107,7 +112,8 @@ function finOpts() {
            tunables: { padH: FIN.padH,
                        padGrab: PAD.grab, padStyle: PAD.style, padCustom: { ...PAD.custom },
                        propGap: PROP.gap,
-                       cutout: CUT.pattern } };
+                       cutout: CUT.pattern,
+                       iface: PROP.iface } };
 }
 
 /** The Sway braces settings. The gap is passed explicitly -- sway.js takes the
@@ -119,6 +125,7 @@ export function swayOpts() {
            reach: num('sway-depth', 15) / 100,
            gap: PROP.gap,
            tines: el('tines').checked,
+           iface: PROP.iface,
            layerHeight: el('layer-height').valueAsNumber };
 }
 
@@ -232,8 +239,8 @@ function applyBuilt(built) {
   clearFinHover();
   finTris = padTris = [];
   // Undo the grey markFinsStale applied to the shared materials.
-  finMaterial.transparent = padMaterial.transparent = false;
-  finMaterial.opacity = padMaterial.opacity = 1;
+  finMaterial.transparent = padMaterial.transparent = ifaceMaterial.transparent = false;
+  finMaterial.opacity = padMaterial.opacity = ifaceMaterial.opacity = 1;
 
   lastBuilt = built;
   padTris = built.padTriangles;
@@ -249,7 +256,7 @@ function applyBuilt(built) {
     // removal survives a same-orientation rebuild. The fin mesh is the FILTERED
     // triangle set; exporters read finTris unchanged.
     finTris = adoptFins(built);
-    finMesh = meshFrom(finTris, finMaterial);
+    finMesh = meshFrom(finTris, finMaterial, ifaceMaterial);
     // In Suggest, also (re)build any hand-drawn walls layered on top. rebuildDrawn
     // self-gates on drawShown(), so it clears them when none apply.
     rebuildDrawn();
@@ -269,7 +276,7 @@ function applyBuilt(built) {
  */
 /** Grey the fins while a drag is in flight, so nothing on screen is a lie. */
 export function markFinsStale() {
-  for (const m of [finMesh, padMesh, drawnMesh]) if (m) m.material.opacity = 0.25;
-  finMaterial.transparent = padMaterial.transparent = drawMaterial.transparent = true;
+  for (const m of [finMesh, padMesh, drawnMesh]) if (m) for (const mat of [m.material].flat()) mat.opacity = 0.25;
+  finMaterial.transparent = padMaterial.transparent = drawMaterial.transparent = ifaceMaterial.transparent = true;
   el('s-fins').textContent = 'generating supports…';
 }

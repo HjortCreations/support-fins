@@ -4,6 +4,7 @@ import { t, tn, currentLang } from './i18n.js';
  * grams receipt, and why a part got no fins.
  */
 import { PAD } from '../fins.js';
+import { PROP } from '../prop.js';
 import { el } from './dom.js';
 import { removedIds } from './remove.js';
 import { drawnWalls, drawMsg, selectedWall, selectedNote, drawShown, drawMaterial } from './walls.js';
@@ -11,7 +12,8 @@ import {
   finMode, finsVisible, materialDensity, syncSectionSums, autoLike,
 } from './settings.js';
 import { analysisTiming } from './part.js';
-import { activeAdded, finMaterial, padMaterial } from './finbuild.js';
+import { ifaceMaterial } from './scene.js';
+import { activeAdded, activeWalls, finMaterial, padMaterial } from './finbuild.js';
 
 /**
  * Why did this part get no fins, in terms the user can act on?
@@ -141,6 +143,18 @@ export function updateReadout(built, ms) {
 }
 
 /**
+ * Flat contacts is on and there are walls, but no wall top got a crest (every contact
+ * tilted): say so, or the export quietly has no interface part to set. Walls only --
+ * a pad alone is no support to put an interface on.
+ */
+function ifaceNote() {
+  if (PROP.iface !== 'flat') return null;
+  const tris = activeWalls();
+  if (!tris.length || tris.some((v) => v[3] === 1)) return null;
+  return 'Interface material: no flat contacts here, so every support prints in one material';
+}
+
+/**
  * Two audiences, two homes. `lead` is the short, must-see stuff -- a support that
  * couldn't build, a part balanced on a point -- and stays in the status panel.
  * `detail` is the how-it-works / how-to-fix text, which reads as a wall when it's
@@ -162,8 +176,8 @@ function setFinNote(lead, detail) {
  * the exact bug M5's scoreboard was built on.
  */
 function updateDrawReadout(built, ms) {
-  finMaterial.transparent = padMaterial.transparent = drawMaterial.transparent = false;
-  finMaterial.opacity = padMaterial.opacity = drawMaterial.opacity = 1;
+  finMaterial.transparent = padMaterial.transparent = drawMaterial.transparent = ifaceMaterial.transparent = false;
+  finMaterial.opacity = padMaterial.opacity = drawMaterial.opacity = ifaceMaterial.opacity = 1;
   const box = el('s-fins');
   el('s-pad').textContent = built ? padStatus(built) : '—';
 
@@ -215,6 +229,8 @@ function updateDrawReadout(built, ms) {
       : 'this part balances on one point. Turn the bed pad on to seat it, or rotate until it sits down');
   }
   if (built && padNote(built)) lead.push(padNote(built));
+  const iface = ifaceNote();
+  if (iface) lead.push(iface);
   setFinNote(lead, help);
   if (ms != null) el('s-time').textContent = `${analysisTiming} · pad ${ms.toFixed(0)} ms`;
 }
@@ -438,6 +454,8 @@ function updateFinReadout(built, ms) {
       }
     }
   }
+  const iface = ifaceNote();
+  if (iface) lead.push(iface);
   setFinNote(lead, help);
   // ms is absent when a hand-drawn wall (Suggest + Draw mix) re-runs the readout
   // without rebuilding the auto fins -- don't touch the timing line then, and

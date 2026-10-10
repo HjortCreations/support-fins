@@ -121,6 +121,22 @@ no DOM), so a change to a verdict or a solver can't silently drift:
 - a **part-standing** wall cuts too, and the pick reaches an **Auto** build through
   `opts.tunables` (the Worker has its own copy of `cutout.js`).
 
+**`interface.test.js`** -- the interface crest (GitHub #21, `web/prop/crest.js`):
+- off, **nothing is tagged** (the sweep pins off as byte-identical);
+- **everywhere**, for prop walls with tines, a wedge, Full, a cut wall, squat walls, and
+  **flat contacts** on a wall standing on the part (lifted and welded) and the portal's
+  flat ceiling: body and crest each come out **closed and outward-wound**, **lose no
+  plastic** of the one-body build (a flat crest adds only its untapered tip, < 5%), and
+  add **no zero-area triangle**;
+- flat contacts give a flat ceiling a **full-width** (th) crest, and a 35° cube's tilted
+  underside and its tines **none**;
+- the crest is **one layer** of the Layer height field (0.2 and 0.3 mm);
+- **no body vertex rises into its crest**;
+- everywhere, a **sway brace's tines** are tagged too;
+- the separate 3MF writes the crest as a **part of the supports object** (a floating
+  object of its own is refused by Orca) and reads back with every triangle; the locked
+  form folds it into the supports.
+
 **`threemf.test.js`** -- the 3MF container, both directions (the only tests here
 that aren't fin geometry, because the file format is equally part of the product):
 - our own export **round-trips** back to the same geometry, both bodies intact

@@ -10,6 +10,7 @@ import { ribbon } from '../solids.js';
 import { longestRun, stationCertified, stationIsClear, welds } from './clearance.js';
 import { PROP } from './config.js';
 import { settleTop } from './contact.js';
+import { crestCut, crestKinds, dropCollapsed, emitCrest } from './crest.js';
 
 /**
  * Sweep a SQUAT breakaway wall: a thin wall necking to the breakaway tip, on a
@@ -20,7 +21,8 @@ import { settleTop } from './contact.js';
  * unions, exactly like `sweep`'s wall + flange.
  */
 export function sweepSquat(line, zBed, out) {
-  const wall = [], brim = [];
+  const wall = [], brim = [], crest = [];
+  const kinds = crestKinds(line);          // the interface crest's plan, null when off
   const brimTop = zBed + PROP.squatBrimH;
   for (let i = 0; i < line.length; i++) {
     const p = line[i];
@@ -38,11 +40,15 @@ export function sweepSquat(line, zBed, out) {
     // neck to the tip over whatever height is left above the brim
     const ztip = Math.max(top - PROP.tipH, brimTop + 0.05);
     const P = (o, z) => [p[0] + sx * o, p[1] + sy * o, z];
+    // where the interface crest runs, the stem stops at the crest's cut
+    const c = crestCut(top, ztip, brimTop, kinds?.[i]);
+    crest.push(c?.ring(P) ?? null);
+    const [zt, zTop, wTop] = c ? [c.zt, c.cut, c.wc] : [ztip, top, PROP.tip / 2];
 
     // the stem: bed to breakaway tip, th-wide then necking to the contact tip
     wall.push([
-      P(+PROP.th / 2, zBed), P(+PROP.th / 2, ztip), P(+PROP.tip / 2, top),
-      P(-PROP.tip / 2, top), P(-PROP.th / 2, ztip), P(-PROP.th / 2, zBed),
+      P(+PROP.th / 2, zBed), P(+PROP.th / 2, zt), P(+wTop, zTop),
+      P(-wTop, zTop), P(-PROP.th / 2, zt), P(-PROP.th / 2, zBed),
     ]);
     // the brim: a thin flat slab overlapping the wall's base, for plate grip
     brim.push([
@@ -50,8 +56,10 @@ export function sweepSquat(line, zBed, out) {
       P(-PROP.squatBrimW, brimTop), P(-PROP.squatBrimW, zBed),
     ]);
   }
+  const from = out.length;
   ribbon(wall, out);
   ribbon(brim, out);
+  if (kinds) { dropCollapsed(out, from); emitCrest(crest, out); }
   return true;
 }
 

@@ -9,6 +9,7 @@
 import { cutWall } from '../cutout.js';
 import { ribbon } from '../solids.js';
 import { PROP } from './config.js';
+import { crestCut, crestKinds, dropCollapsed, emitCrest } from './crest.js';
 
 /**
  * Foot half-width for a wall of height `h`.
@@ -55,7 +56,8 @@ export function profileHalf(z, top) {
  * outline. Replaces the single cone-footed solid that read as a golf tee.
  */
 export function sweep(line, zBed, out, minH = PROP.minHeight) {
-  const wall = [], flange = [], st = [];
+  const wall = [], flange = [], st = [], crest = [];
+  const kinds = crestKinds(line);          // the interface crest's plan, null when off
   for (let i = 0; i < line.length; i++) {
     const p = line[i];
     const a = line[Math.max(0, i - 1)];
@@ -76,23 +78,30 @@ export function sweep(line, zBed, out, minH = PROP.minHeight) {
     const ztip = Math.max(top - PROP.tipH, zBed + flangeH + 0.1);
     const baseTop = zBed + flangeH;
     const P = (o, z) => [p[0] + sx * o, p[1] + sy * o, z];
+    // where the interface crest runs, the stem stops at the crest's cut
+    const c = crestCut(top, ztip, zBed, kinds?.[i]);
+    crest.push(c?.ring(P) ?? null);
+    const [zt, zTop, wTop] = c ? [c.zt, c.cut, c.wc] : [ztip, top, PROP.tip / 2];
 
     // the stem: a straight thin wall from the bed up to the breakaway tip
     wall.push([
-      P(+PROP.th / 2, zBed), P(+PROP.th / 2, ztip), P(+PROP.tip / 2, top),
-      P(-PROP.tip / 2, top), P(-PROP.th / 2, ztip), P(-PROP.th / 2, zBed),
+      P(+PROP.th / 2, zBed), P(+PROP.th / 2, zt), P(+wTop, zTop),
+      P(-wTop, zTop), P(-PROP.th / 2, zt), P(-PROP.th / 2, zBed),
     ]);
     // the foot: a flat slab, its own closed solid overlapping the wall's base
     flange.push([
       P(+foot, zBed), P(+foot, baseTop), P(-foot, baseTop), P(-foot, zBed),
     ]);
-    st.push({ p, sx, sy, top, ztip, bot: zBed, botTip: baseTop, taperBot: false });
+    st.push({ p, sx, sy, top: zTop, ztip: zt, holeTop: ztip, tipHalf: wTop, bot: zBed, botTip: baseTop, taperBot: false });
   }
 
+  const from = out.length;
   if (!cutWall(st, wall, out, PROP)) ribbon(wall, out);
   ribbon(flange, out);
+  if (kinds) { dropCollapsed(out, from); emitCrest(crest, out); }
   return true;
 }
+
 
 /**
  * Sweep a PART-ATTACHED wall between two contours: its top stops `gap` below the
@@ -127,7 +136,8 @@ export function sweepBetween(topLine, botLine, out, minH = PROP.minHeight) {
   // slicer to start it on (a figure's hand over the plate). Decided per STATION,
   // both sides together: sideFloors' tilt assumes one gap added to both, and a
   // plate side left down under a chamfer's toe ran 0.07 mm off the part
-  const wall = [], st = [];
+  const wall = [], st = [], crest = [];
+  const kinds = crestKinds(topLine);       // the interface crest's plan, null when off
   for (let i = 0; i < topLine.length; i++) {
     const p = topLine[i];
     const a = topLine[Math.max(0, i - 1)];
@@ -159,24 +169,29 @@ export function sweepBetween(topLine, botLine, out, minH = PROP.minHeight) {
     // zero-area slivers (ssdMounts X30Y60: short part walls, 4 per wall)
     const taper = Math.min(PROP.tipH, welded ? h / 2 : h - 0.1);
     const zBotTip = welded ? bot + taper : bHi;
-    const zTopTip = top - taper;
     const P = (o, z) => [p[0] + sx * o, p[1] + sy * o, z];
+    // where the interface crest runs, the wall stops at the crest's cut
+    const c = crestCut(top, top - taper, zBotTip, kinds?.[i]);
+    crest.push(c?.ring(P) ?? null);
+    const [zTopTip, zTop, wTop] = c ? [c.zt, c.cut, c.wc] : [top - taper, top, PROP.tip / 2];
 
     // one closed section: th-wide through the middle, tip-wide at the top and,
     // when welded, at the bottom too
     wall.push(welded ? [
       P(+PROP.tip / 2, bot), P(+PROP.th / 2, zBotTip),
-      P(+PROP.th / 2, zTopTip), P(+PROP.tip / 2, top),
-      P(-PROP.tip / 2, top), P(-PROP.th / 2, zTopTip),
+      P(+PROP.th / 2, zTopTip), P(+wTop, zTop),
+      P(-wTop, zTop), P(-PROP.th / 2, zTopTip),
       P(-PROP.th / 2, zBotTip), P(-PROP.tip / 2, bot),
     ] : [
-      P(+PROP.th / 2, bP), P(+PROP.th / 2, zTopTip), P(+PROP.tip / 2, top),
-      P(-PROP.tip / 2, top), P(-PROP.th / 2, zTopTip), P(-PROP.th / 2, bN),
+      P(+PROP.th / 2, bP), P(+PROP.th / 2, zTopTip), P(+wTop, zTop),
+      P(-wTop, zTop), P(-PROP.th / 2, zTopTip), P(-PROP.th / 2, bN),
     ]);
-    st.push({ p, sx, sy, top, ztip: zTopTip, bot: bHi, botTip: zBotTip, taperBot: welded, botN: bN, botP: bP });
+    st.push({ p, sx, sy, top: zTop, ztip: zTopTip, holeTop: top - taper, tipHalf: wTop, bot: bHi, botTip: zBotTip, taperBot: welded, botN: bN, botP: bP });
   }
 
+  const from = out.length;
   if (!cutWall(st, wall, out, PROP)) ribbon(wall, out);
+  if (kinds) { dropCollapsed(out, from); emitCrest(crest, out); }
   return true;
 }
 
