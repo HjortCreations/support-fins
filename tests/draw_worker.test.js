@@ -118,4 +118,3 @@ Deno.test('worker queue invalidates cancelled and replaced models, and restarts 
   workers[2].reply(); assert(await retry !== null);
   queue.dispose();
 });
-
