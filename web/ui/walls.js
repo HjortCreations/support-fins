@@ -157,7 +157,7 @@ export function rebuildDrawn() {
     drawnWalls = drawnWalls.filter((w) => !failedNew.includes(w));
     if (drawnMesh) { scene.remove(drawnMesh); drawnMesh.geometry.dispose(); }
     drawnTris = reply.built.triangles;
-    drawnMesh = meshFrom(drawnTris, drawMaterial);
+    drawnMesh = meshFrom(drawnTris, drawMaterial, ifaceMaterial);
     syncSelection();
     updateReadout(lastBuilt);
     el('s-time').textContent = el('s-time').textContent.replace(/ · Draw \d+ ms/g, '')

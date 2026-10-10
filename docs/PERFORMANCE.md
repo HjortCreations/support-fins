@@ -6,6 +6,22 @@ thread. This change skips the unused placement pass and moves manual geometry in
 a persistent worker. Cached posed triangles reuse the existing XY spatial index
 instead of scanning every triangle at every wall station.
 
+## Compatibility with current upstream
+
+The branch is rebased on upstream `4b0c843`, including saved 3MF sessions,
+interface-material crests and upstream's indexed Draw surface queries. Interface
+vertex tags survive cached serial/parallel workers and keep their original
+ownership ranges; the viewport and 3MF exporter use the tagged second material.
+Saved Draw supports rebuild through the background queue when a 3MF is reopened.
+Regression tests compare 1/2/4-worker output with interface off, Flat contacts and
+Everywhere, including a return to off, and round-trip the geometry and session.
+A Chromium check exported and reopened a synthetic metre-high post with a Sway
+brace: its 167 tines, interface material and Draw settings were restored.
+
+The timing examples below were measured before this upstream rebase. Upstream
+now provides part of the indexed-query improvement itself; those old comparisons
+are not measurements of an additional gain over today's main.
+
 ## Queue, status and export
 
 The browser retains Auto as its default; Draw and Full coverage remain selectable.

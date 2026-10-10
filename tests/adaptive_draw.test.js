@@ -8,6 +8,33 @@ const jobFor = () => ({ kind: 'build', rot: ID, result,
   options: { tunables: { propGap: 0.2 }, draw: { tines: true, layerHeight: 0.2 }, sway: {} },
   requests: Array.from({ length: 8 }, (_, i) => ({ a: [-40, -35 + i * 10, 100], b: [40, -35 + i * 10, 100] })) });
 
+Deno.test('upstream interface tags survive serial/parallel Draw and 3MF session export', async () => {
+  const { splitInterface } = await import('../web/prop.js');
+  const { writeThreeMF, readThreeMF } = await import('../web/threemf.js');
+  const topo = model(), job = jobFor();
+  for (const iface of [false, 'flat', 'all', false]) {
+    job.options.tunables.iface = iface;
+    const direct = buildDrawn(topo, result, ID, job.requests, job.options);
+    const split = splitInterface(direct.triangles);
+    assert(!!split.iface.length === !!iface, 'interface mode was lost or stuck on');
+    for (const width of [1, 2, 4]) {
+      const pool = new DrawPool(topo, { cores: 8, memory: 8 });
+      pool.policy.width = width;
+      try {
+        const reply = await pool.build(job, () => buildDrawn(topo, result, ID, job.requests, job.options));
+        const built = reply.built ?? buildDrawn(topo, result, ID, job.requests, job.options, {}, null, reply.candidates);
+        assert(JSON.stringify(built) === JSON.stringify(direct), 'worker count changed interface tags or ownership');
+      } finally { pool.dispose(); }
+    }
+    const session = { v: 1, finMode: 'draw', walls: job.requests, form: { iface: iface || 'off' } };
+    const blob = writeThreeMF([[0, 0, 0], [1, 0, 0], [0, 1, 0]], split.body, 'worker-interface',
+      { separate: true, iface: split.iface, session });
+    const loaded = await readThreeMF(new Uint8Array(await blob.arrayBuffer()));
+    assert(JSON.stringify(loaded.session) === JSON.stringify(session), '3MF lost the Draw session');
+    assert(loaded.objects[1].positions.length / 3 === direct.triangles.length, '3MF lost body or interface geometry');
+  }
+});
+
 Deno.test('real 1/2/4-worker candidates preserve exact merged triangles, ownership and mixed Sway order', async () => {
   const topo = model(), job = jobFor();
   // A rejected Sway and rejected ordinary wall exercise ordered result slots too.
