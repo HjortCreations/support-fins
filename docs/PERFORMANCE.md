@@ -2,16 +2,21 @@
 
 Large models previously paid for automatic walls that Draw immediately discarded.
 Manual walls, Sway braces, tine combs and hover previews also computed on the UI
-thread. This change skips the unused placement pass and moves manual geometry into
-a persistent worker. Cached posed triangles reuse the existing XY spatial index
-instead of scanning every triangle at every wall station.
+thread. Upstream now skips the unused placement pass (#229), adopted from this
+work. This PR moves manual geometry into a persistent worker. Cached posed
+triangles reuse the existing XY spatial index instead of scanning every triangle
+at every wall station.
 
 ## Compatibility with current upstream
 
-The branch is rebased on upstream `4b0c843`, including saved 3MF sessions,
+The branch is rebased on upstream `da413e5`, including saved 3MF sessions,
 interface-material crests and upstream's indexed Draw surface queries. Interface
 vertex tags survive cached serial/parallel workers and keep their original
 ownership ranges; the viewport and 3MF exporter use the tagged second material.
+Upstream supplies the Draw-only seating/pad mode and Windows test compatibility
+(#228/#229/#230); those edits are no longer part of this PR. The shared coordinator
+uses that Draw mode, and ordinary-wall parallelism and retry/history behavior stay
+in this PR.
 Saved Draw supports rebuild through the background queue when a 3MF is reopened.
 Regression tests compare 1/2/4-worker output with interface off, Flat contacts and
 Everywhere, including a return to off, and round-trip the geometry and session.
@@ -19,8 +24,8 @@ A Chromium check exported and reopened a synthetic metre-high post with a Sway
 brace: its 167 tines, interface material and Draw settings were restored.
 
 The timing examples below were measured before this upstream rebase. Upstream
-now provides part of the indexed-query improvement itself; those old comparisons
-are not measurements of an additional gain over today's main.
+now provides indexed-query and discarded-prop-pass improvements itself; those old
+comparisons are not measurements of an additional gain over today's main.
 
 ## Queue, status and export
 
@@ -154,7 +159,8 @@ and export still contain UI-thread work. Moving geometry workers does not make
 all of those free. Auto/Sway parallelization requires a separate design for ordered
 placement and collision state; it is intentionally outside this change.
 
-This work contains no nozzle sizing, Cross, taper or rounded-foot changes from
-PR #210. Basic Draw/background improvements already present there overlap with
-this independent upstream-based PR. The adaptive CPU implementation is separate;
-after either PR merges, rebase the other to reconcile those shared changes.
+This work contains no nozzle sizing, Cross, taper or rounded-foot changes.
+PR #210 owns nozzle profiles only. The Windows test compatibility and Draw-only
+seating/pad engine mode are now upstream; neither PR duplicates those patches.
+This PR owns the shared background queue, manual geometry workers and adaptive
+CPU policy.
