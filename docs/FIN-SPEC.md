@@ -132,8 +132,8 @@ welts.
   part (PETG under PLA). `PROP.iface` (`web/prop/crest.js`) is a mode:
   - **Flat contacts** (the default when on): a wall station gets a crest only where
     the part's underside above it is within `ifaceFlatDeg` = 10° of level. There the
-    crest is `PROP.ifaceLayers` = 1 layer (the Layer height field, 0.2 mm) of the wall's full 1.0 mm
-    (two lines), no tip taper: the taper only exists so fused PLA snaps off, and it
+    crest is `PROP.ifaceLayers` = 1 layer (the Layer height field, 0.2 mm) of the wall's full configured thickness
+    (the selected nozzle profile, or the legacy 1.0 mm), no tip taper: the taper only exists so fused PLA snaps off, and it
     left one PETG line with nothing to bond to. 10° keeps the full-width edge 0.09 mm
     off the part, under the gap. Tines stay in the body material. That is how PETG
     interfaces are used (flat undersides come out like top surfaces) and costs a few

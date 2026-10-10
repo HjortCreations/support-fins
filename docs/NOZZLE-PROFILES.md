@@ -16,6 +16,12 @@ Feet encompass the wider bodies. Existing foot shapes, Sway depth limits,
 placement decisions, collisions and the three-tine minimum remain unchanged.
 Thicker walls may be refused where the clearance cannot accommodate them.
 
+Upstream's optional **Interface material → Flat contacts** keeps the full chosen
+wall gauge at flat contact crests, instead of the one-bead breakaway tip. With
+Everywhere, Sway tine material tags are preserved as well. The 3MF exporter keeps
+the interface as a component of the supports object. These combinations are
+geometry-tested; material bonding and tool changes still need printer checks.
+
 Set **Layer height** to the actual slice height, in the range 0.08–2.4 mm.
 Tines occupy one layer. The same range reaches the shared plugin option schema;
 plugin and other engine callers keep legacy wall dimensions unless they explicitly

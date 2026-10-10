@@ -18,6 +18,32 @@ function withProfile(nozzle, wallLines, fn) {
   }
 }
 
+Deno.test('nozzle profile: upstream flat interface keeps the chosen wall gauge and Sway tags', async () => {
+  const { splitInterface } = prop;
+  let split;
+  withProfile(1.6, 4, (p) => {
+    prop.PROP.iface = 'flat';
+    const r = drawnWall([-40, 0, 100], [40, 0, 100], block(-60, 60, -30, 30, 100, 110), 0,
+      { tines: false, layerHeight: 0.6 });
+    assert(r.ok, r.reason);
+    split = splitInterface(r.tris);
+    assert(split.iface.length && isClosed(split.iface), 'no closed interface crest');
+    const top = Math.max(...split.iface.map((v) => v[2]));
+    const edge = split.iface.filter((v) => Math.abs(v[2] - top) < 1e-6);
+    assertClose(Math.max(...edge.map((v) => v[1])) - Math.min(...edge.map((v) => v[1])), p.wallThickness, 1e-6);
+    const topo = blockTopo(-20, 20, -15, 15, 0, 150);
+    const b = fins.buildFins(topo, analyze(topo, 45, ID), ID, { mode: 'auto', tines: true,
+      tunables: { nozzle: 1.6, wallLines: 4, iface: 'all' }, sway: { on: true } });
+    assert(b.sway.tines > 0 && b.triangles.filter((v) => v[3] === 1).length / 3 === b.sway.tines * 12,
+      'profile sizing lost the Sway interface tags');
+  });
+  const blob = writeThreeMF([[0, 0, 0], [1, 0, 0], [0, 1, 0]], split.body, 'profile-interface',
+    { separate: true, iface: split.iface });
+  const loaded = await readThreeMF(new Uint8Array(await blob.arrayBuffer()));
+  assert(loaded.objects[1].positions.length / 3 === split.body.length + split.iface.length,
+    '3MF lost the profile-sized interface');
+});
+
 Deno.test('nozzle profile: measured wall bodies use 2/4/6/8 lines, contacts one line', () => {
   for (const nozzle of [0.4, 0.8, 1.6, 2.4]) for (const lines of [2, 4, 6, 8]) {
     withProfile(nozzle, lines, (p) => {
