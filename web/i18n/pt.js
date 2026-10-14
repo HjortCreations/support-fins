@@ -1,4 +1,7 @@
 export default {
+  "Wall lines": "Linhas da parede",
+  "{n} lines · {mm} mm minimum": "{n} linhas · mínimo de {mm} mm",
+  "Requested wall thickness = nozzle × 1.1 × line count. Structural safety floors may make walls and Sway braces thicker. Contact tips and tines keep the nozzle scaling.": "Espessura desejada da parede = bico × 1,1 × número de linhas. As espessuras mínimas de segurança podem tornar paredes e reforços Sway mais grossos. Pontas de contato e dentes mantêm o dimensionamento pelo bico.",
   "Middle-drag orbits, Shift + middle-drag pans, wheel zooms.": "Arrastar com o botão do meio gira a vista, Shift + botão do meio move, a roda dá zoom.",
   "Middle-drag orbits, Ctrl + middle-drag pans, wheel zooms.": "Arrastar com o botão do meio gira a vista, Ctrl + botão do meio move, a roda dá zoom.",
   "Right-drag orbits, middle- or Ctrl + right-drag pans, wheel zooms.": "Arrastar com o botão direito gira a vista, botão do meio ou Ctrl + botão direito move, a roda dá zoom.",

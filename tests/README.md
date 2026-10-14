@@ -222,3 +222,9 @@ braces, unchanged capped/short geometry, expanded-foot collisions with the part
 and existing supports, collision-limited height/depth, real Auto worker on/off
 requests, removal ownership and STL/component-3MF export with interface tags.
 Full brace depth starts off in the browser; legacy goldens stay unchanged.
+
+`wall_lines.test.js` verifies the 2/4/6/8-line minimum gauge on top of upstream
+nozzle scaling, all browser nozzle choices through 3 mm, unchanged contact
+scaling, height-based Sway floors, reused-engine reset, Draw/flat interface,
+Auto/Full ownership, enlarged-footprint collisions, real worker requests and
+metre-high STL/component-3MF export. Default geometry goldens are unchanged.

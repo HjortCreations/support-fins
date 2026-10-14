@@ -314,7 +314,8 @@ nor the Draw worker/CPU changes.
 ## Nozzle size — `web/nozzle.js`
 
 Every width above is for a **0.4 mm nozzle**. The site's Nozzle field (0.2 / 0.25 /
-0.4 / 0.6 / 0.8, default 0.4) scales them by `k = nozzle / 0.4`:
+0.4 / 0.6 / 0.8 / 1.0 / 1.2 / 1.6 / 2.0 / 2.4 / 3.0, default 0.4) scales
+them by `k = nozzle / 0.4`. At the default two-line selection:
 
 | width | 0.4 | rule | 0.6 | 0.8 | 0.2 |
 |---|---|---|---|---|---|
@@ -333,3 +334,27 @@ The plugins build at 0.4 for now. Tine reach (`PROP.tineReach`
 0.8 tine stands proud of the tip is unprinted. The comb's scan step follows the tine
 width, so a 0.2 comb can land a tine or two fewer. The nozzle is a printer setting:
 remembered across visits, left alone by a loaded session.
+
+**Wall lines** adds a minimum structural gauge `nozzle × 1.1 × lines`, with
+`lines` restricted to 2/4/6/8 (default 2). Walls and wedges use the larger of
+this gauge and the scaled widths above. A Sway rib uses the larger of this
+gauge and its existing scaled, height-based thickness, recalculated if a
+collision shortens it. The chosen count never thins a print-tested structure.
+For example, at 0.4 mm / 2 lines the requested 0.88 mm leaves the wall at 1.0 mm
+and a metre-high Sway at 2.4 mm; 0.8 mm / 4 lines requests 3.52 mm but a tall
+Sway remains at least 4.8 mm. The recap reports actual ordinary-wall thickness;
+the line control reports the requested minimum.
+
+Contact tips and tines retain nozzle scaling regardless of line count. Foot
+padding stays unchanged, and Sway's wall-clearance envelope follows the wider
+wedge. Full brace depth remains a separate, default-off setting. Layer height
+retains the upstream maximum of 0.6 mm. These dimensions do not guarantee that
+a particular slicer will produce exactly that many extrusion paths.
+
+Auto/Full worker requests carry `tunables: { nozzle, wallLines }`; Draw uses the
+same dimensions on the page. Reused engines reset an omitted line count to 2
+while retaining the current printer nozzle and clearances. The line count is
+undoable and saved with the part's 3MF session; the printer nozzle continues to
+be remembered separately and is left alone on session import. Plugin dialogs
+retain their upstream controls and scaling. Larger nozzles and higher line
+counts have synthetic geometry/export tests, not physical print validation.

@@ -231,6 +231,12 @@
         <option value="0.4" selected>0.4</option>
         <option value="0.6">0.6</option>
         <option value="0.8">0.8</option>
+        <option value="1">1.0</option>
+        <option value="1.2">1.2</option>
+        <option value="1.6">1.6</option>
+        <option value="2">2.0</option>
+        <option value="2.4">2.4</option>
+        <option value="3">3.0</option>
       </select>
     </label>
     <label class="fld">
@@ -355,6 +361,11 @@
 
   <details class="sec" data-sec="walls" open>
     <summary><span class="sec-title" data-i18n="Walls">Walls</span><span class="sec-sum" id="sum-walls"></span></summary>
+    <label class="fld" data-i18n-title title="Requested wall thickness = nozzle × 1.1 × line count. Structural safety floors may make walls and Sway braces thicker. Contact tips and tines keep the nozzle scaling.">
+      <span data-i18n="Wall lines">Wall lines</span>
+      <input type="range" id="wall-lines" aria-label="Wall lines" min="2" max="8" step="2" value="2">
+      <output id="wall-lines-value" class="mut" for="wall-lines nozzle"></output>
+    </label>
     <!-- Cutouts (issue #34): holes through the middle of each breakaway wall to
          save filament. Every hole has a pointed roof (>=45deg) so nothing bridges;
          the contact top, foot and ends stay solid, and a wall too short for a hole

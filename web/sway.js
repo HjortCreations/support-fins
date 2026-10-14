@@ -46,6 +46,7 @@ export const SWAY = {
   thMin: 1.2,         // wall thickness at the minimum height (the fins' own wall)
   thPerMm: 0.004,     // grows with height: 1.2mm at 0, 2.2mm at 250mm
   thMax: 2.4,
+  wallThickness: 0,  // optional nozzle/line-count minimum, above the height-based floor
   reach: 0.15,        // DEFAULT base depth as a fraction of rib height (UI: "Brace depth")
   topDepth: 4,        // mm at the top: a flat edge, not a point (a point is a retraction)
   minDepth: 8,
@@ -242,7 +243,7 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
   if (H < SWAY.minRibH) {
     return { ok: false, reason: `that face only reaches ${fz1.toFixed(0)}mm up — too short to need a brace` };
   }
-  const thFor = (h) => Math.min(SWAY.thMax, SWAY.thMin + SWAY.thPerMm * h);
+  const thFor = (h) => Math.max(SWAY.wallThickness, Math.min(SWAY.thMax, SWAY.thMin + SWAY.thPerMm * h));
   let th = thFor(H);
 
   // Seat the rib's inner edge on the outermost point of the face INSIDE its own

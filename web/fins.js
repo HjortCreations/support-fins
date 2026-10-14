@@ -44,7 +44,7 @@ import { lastResortWalls } from './fins/shortwalls.js';
 import { fillCoverage } from './fins/fill.js';
 import { buildPerpFins, PERP, propServesPatch, unservedAfterWedges, wedgeVeto } from './fins/wedges.js';
 import { judgeDownhill } from './fins/downhill.js';
-import { applyNozzle } from './nozzle.js';
+import { applyNozzle, nozzle } from './nozzle.js';
 
 // Moved into web/fins/ (one module per concern); re-exported here so every
 // importer of fins.js is unchanged.
@@ -78,10 +78,13 @@ function coverPitch(coverage) {
  *
  * So the values travel WITH the build request (opts.tunables, structured-cloned like
  * every other option) and are applied here, in whichever instance is doing the work.
- * Unknown or non-finite entries are ignored, and calling this with nothing leaves the
- * defaults alone -- an old caller that doesn't pass tunables behaves exactly as before.
+ * Unknown or non-finite entries are ignored. Omitted wallLines restores the
+ * two-line default; the nozzle retains its printer-setting semantics.
  */
 export function applyTunables(t) {
+  // The printer nozzle retains upstream's semantics; an omitted wall count
+  // resets the optional gauge so a reused worker cannot leak a previous choice.
+  applyNozzle(t?.nozzle ?? nozzle, t?.wallLines ?? 2);
   if (!t) return;
   const set = (obj, key, v) => { if (Number.isFinite(v)) obj[key] = v; };
   set(FIN, 'padH', t.padH);
@@ -100,8 +103,6 @@ export function applyTunables(t) {
   if (CUTOUT_PATTERNS.includes(t.cutout)) CUT.pattern = t.cutout;
   // So is the interface crest's mode (GitHub #21, prop/crest.js).
   if ([false, 'flat', 'all'].includes(t.iface)) PROP.iface = t.iface;
-  // And the nozzle, which scales the support widths (nozzle.js).
-  if (t.nozzle !== undefined) applyNozzle(t.nozzle);
 }
 
 /**

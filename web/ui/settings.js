@@ -207,8 +207,18 @@ try {
   const saved = localStorage.getItem(NOZZLE_KEY);
   if ([...el('nozzle').options].some((o) => o.value === saved)) el('nozzle').value = saved;
 } catch { /* storage off */ }
+function syncWallLines() {
+  const d = Number(el('nozzle').value), lines = el('wall-lines').valueAsNumber;
+  applyNozzle(d, lines);
+  el('wall-lines-value').textContent = t('{n} lines · {mm} mm minimum', { n: lines, mm: +(d * 1.1 * lines).toFixed(3) });
+}
+el('wall-lines').addEventListener('input', () => {
+  syncWallLines();
+  syncSectionSums();
+  debouncedRefresh();
+});
 el('nozzle').addEventListener('change', () => {
-  applyNozzle(Number(el('nozzle').value));
+  syncWallLines();
   try { localStorage.setItem(NOZZLE_KEY, el('nozzle').value); } catch { /* storage off */ }
   syncSectionSums();
   debouncedRefresh();
@@ -274,7 +284,7 @@ export function syncSectionSums() {
   el('sum-clearances').textContent =
     `${el('gap').value} mm gap · pad ${el('bed-pad').selectedOptions[0].textContent.toLowerCase()}`;
   const cut = el('cutout').value;
-  el('sum-walls').textContent = (cut === 'none' ? 'solid' : `${sel('cutout').toLowerCase()} cutouts`)
+  el('sum-walls').textContent = `${+PROP.th.toFixed(3)} mm · ` + (cut === 'none' ? 'solid' : `${sel('cutout').toLowerCase()} cutouts`)
     + (el('plate-only').checked ? ' · plate only' : '');
   el('sum-sway').textContent = el('sway').checked
     ? `${el('sway-spacing').value} mm tines · ${el('sway-depth').value}% deep`
@@ -321,7 +331,8 @@ export function initSettings() {
   PROP.iface = ifaceMode();
   const gap = el('gap').valueAsNumber;   // ...and its last Support gap (wireGap's range)
   if (Number.isFinite(gap)) PROP.gap = Math.min(0.4, Math.max(0.1, gap));
-  applyNozzle(Number(el('nozzle').value));   // ...and the widths to the remembered nozzle
+  syncWallLines();   // ...and the minimum gauge for the remembered printer nozzle
+  syncSectionSums();
 }
 
-window.addEventListener('languagechange', () => { if (typeof syncSectionSums === "function") syncSectionSums(); el('fins-toggle').textContent = finsVisible ? t('Fins on') : t('Add fins'); el('augment-toggle').textContent = drawAugment ? t('Done adding walls') : t('+ Add walls by hand'); });
+window.addEventListener('languagechange', () => { syncWallLines(); if (typeof syncSectionSums === "function") syncSectionSums(); el('fins-toggle').textContent = finsVisible ? t('Fins on') : t('Add fins'); el('augment-toggle').textContent = drawAugment ? t('Done adding walls') : t('+ Add walls by hand'); });

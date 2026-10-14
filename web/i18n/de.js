@@ -1,4 +1,7 @@
 export default {
+  "Wall lines": "Wandlinien",
+  "{n} lines · {mm} mm minimum": "{n} Linien · mindestens {mm} mm",
+  "Requested wall thickness = nozzle × 1.1 × line count. Structural safety floors may make walls and Sway braces thicker. Contact tips and tines keep the nozzle scaling.": "Gewünschte Wandstärke = Düse × 1,1 × Linienzahl. Sicherheitsmindeststärken können Wände und Sway-Streben dicker machen. Kontaktspitzen und Zinken behalten die Düsen-Skalierung.",
   "Full brace depth": "Volle Streben-Tiefe",
   "Use the selected Brace depth percentage beyond the usual 60 mm limit. Larger braces need more plate space and material; collisions can shorten or refuse them. Off keeps the 60 mm limit.": "Den gewählten Prozentsatz für die Streben-Tiefe auch über die übliche Grenze von 60 mm hinaus verwenden. Größere Streben benötigen mehr Platz auf dem Druckbett und mehr Material; bei Kollisionen werden sie verkürzt oder abgelehnt. Aus behält die Grenze von 60 mm.",
   "Middle-drag orbits, Shift + middle-drag pans, wheel zooms.": "Mittlere Maustaste ziehen dreht die Ansicht, Umschalt + mittlere Maustaste ziehen verschiebt, Mausrad zoomt.",

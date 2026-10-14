@@ -40,6 +40,7 @@ const PLUGIN_ONLY = { material: 'the site dropped its PLA/PETG dropdown; the plu
 // Every site control that is NOT in options.json, and why. A new control on the site
 // fails the test below until it is added to the schema or listed here.
 const SITE_EXCLUDED = {
+  'wall-lines': 'browser minimum gauge; plugin dialogs retain upstream nozzle scaling',
   'full-brace-depth': 'browser opt-in; plugin dialogs retain the established 60 mm Sway depth limit',
   'file': 'loading a model is the host\'s job', 'volume': 'site build-volume preview',
   'vx': 'site build-volume preview', 'vy': 'site build-volume preview', 'vz': 'site build-volume preview',

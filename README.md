@@ -60,6 +60,17 @@ layers. Thickness, contact tines and grip rules are unchanged; deeper metre-high
 braces have not been physically print-tested. Undo/redo and 3MF sessions retain
 the checkbox. Direct callers opt in with `sway: { on: true, uncappedDepth: true }`.
 
+**Nozzle and wall lines:** Setup keeps the printer's remembered nozzle setting,
+with additional sizes up to 3.0 mm. Under Walls, choose **2/4/6/8 wall lines**
+to request a minimum thickness of `nozzle × 1.1 × lines`. The existing safety
+floors can make ordinary walls, wedges and Sway braces thicker; contact tips
+and tines keep their nozzle scaling. Two lines preserve upstream geometry.
+The line count follows undo/redo and saved 3MF sessions; importing a session
+leaves the printer nozzle alone. Layer height keeps its 0.6 mm maximum. Match
+the intended 1.1× line width in the slicer and inspect its actual extrusion
+paths; larger nozzle sizes and these choices have not been physically validated.
+See [the nozzle guide](docs/NOZZLE-PROFILES.md) for examples and limitations.
+
 Tall, slender parts have a problem the fins were never built for: nothing overhangs, but
 as the part grows, the nozzle's drag and each layer shrinking as it cools push the top
 around. The part drifts, sags or wobbles, and every movement shows up as a layer line.
