@@ -235,3 +235,7 @@ braces, unchanged capped/short geometry, expanded-foot collisions with the part
 and existing supports, collision-limited height/depth, real Auto worker on/off
 requests, removal ownership and STL/component-3MF export with interface tags.
 Full brace depth starts off in the browser; legacy goldens stay unchanged.
+
+The adaptive Draw compatibility tests also exercise upstream nozzle changes
+through reused 1/2/4-worker lanes and full Sway depth on/off through the cached
+coordinator, preserving scaled thickness, interface tags and exact ownership.

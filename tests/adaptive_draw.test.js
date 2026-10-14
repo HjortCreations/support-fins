@@ -2,11 +2,55 @@ import { assert, block, buildTopology, blockTopo, analyze } from './_util.js';
 import { buildDrawn } from '../web/draw-build.js';
 import { DrawPool } from '../web/draw-pool.js';
 import { LatestWorker } from '../web/worker-queue.js';
+import { applyNozzle } from '../web/nozzle.js';
 const ID = [1, 0, 0, 0, 1, 0, 0, 0, 1], result = { offset: { x: 0, y: 0, z: 0 } };
 const model = () => blockTopo(-60, 60, -60, 60, 100, 110);
 const jobFor = () => ({ kind: 'build', rot: ID, result,
   options: { tunables: { propGap: 0.2 }, draw: { tines: true, layerHeight: 0.2 }, sway: {} },
   requests: Array.from({ length: 8 }, (_, i) => ({ a: [-40, -35 + i * 10, 100], b: [40, -35 + i * 10, 100] })) });
+
+Deno.test('upstream nozzle changes reach reused 1/2/4-worker Draw lanes and retain interfaces', async () => {
+  const topo=model(), job=jobFor();
+  try {
+    for(const width of [1,2,4]) {
+      const pool=new DrawPool(topo,{cores:8,memory:8});pool.policy.width=width;
+      try {
+        let previous;
+        for(const nozzle of [0.4,0.8,1.2,0.4]) {
+          job.options.tunables={nozzle,propGap:0.2,iface:'all'};
+          const direct=buildDrawn(topo,result,ID,job.requests,job.options);
+          assert(direct.items.every(i=>i.ok));
+          const soup=JSON.stringify(direct.triangles);
+          if(previous)assert(soup!==previous,'nozzle change did not resize supports');
+          previous=soup;
+          const reply=await pool.build(job,()=>buildDrawn(topo,result,ID,job.requests,job.options));
+          assert(!reply.fallback,reply.fallback);
+          const built=reply.built??buildDrawn(topo,result,ID,job.requests,job.options,{},null,reply.candidates);
+          assert(JSON.stringify(built)===JSON.stringify(direct),'worker retains stale nozzle or loses tags/ranges');
+        }
+      } finally {pool.dispose();}
+    }
+  } finally {applyNozzle(0.4);}
+});
+
+Deno.test('cached coordinator preserves upstream full Sway depth and scaled thickness', async () => {
+  const topo=blockTopo(-80,80,-60,60,0,1000), res=analyze(topo,45,ID);
+  const queue=new LatestWorker(new URL('../web/drawworker.js',import.meta.url));
+  const face=Array.from({length:topo.nFaces},(_,i)=>i).find(i=>topo.nrm[i*3+1]<-0.9);
+  try {
+    for(const uncappedDepth of [true,false,true]) {
+      const options={tunables:{nozzle:0.8,iface:'all'},draw:{},sway:{tines:true,iface:'all',layerHeight:0.6,uncappedDepth:true}};
+      options.sway.uncappedDepth=uncappedDepth;
+      const job={kind:'build',hardware:{cores:8,memory:8},rot:ID,result:res,options,requests:[{kind:'sway',face,a:[0,-60,400]}]};
+      const reply=await queue.run('build',topo,job), direct=buildDrawn(topo,res,ID,job.requests,options);
+      assert(reply.built.items[0].ok,reply.built.items[0].info.reason);
+      const r=reply.built.items[0].info;
+      assert(Number.isFinite(r.th) && Math.abs(r.th-4.8)<1e-9);
+      assert(Number.isFinite(r.depth) && Math.abs(r.depth-(uncappedDepth?r.height*0.15:60))<1e-6);
+      assert(JSON.stringify(reply.built)===JSON.stringify(direct));
+    }
+  } finally {queue.dispose();applyNozzle(0.4);}
+});
 
 Deno.test('upstream interface tags survive serial/parallel Draw and 3MF session export', async () => {
   const { splitInterface } = await import('../web/prop.js');

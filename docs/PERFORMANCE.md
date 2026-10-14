@@ -164,3 +164,11 @@ PR #210 owns nozzle profiles only. The Windows test compatibility and Draw-only
 seating/pad engine mode are now upstream; neither PR duplicates those patches.
 This PR owns the shared background queue, manual geometry workers and adaptive
 CPU policy.
+
+The October 14 compatibility update is based on `b625eed`, including upstream
+nozzle scaling, remembered printer settings, the 0.6 mm layer-height limit,
+full Sway depth and downhill walls. Real reused 1/2/4-worker lanes preserve
+geometry, interface tags and ownership across nozzle changes. The cached Draw
+coordinator also preserves full-depth on/off and scaled Sway thickness on a
+synthetic metre-high post. These are compatibility tests, not new performance
+measurements; the timing examples above still describe the older base.
