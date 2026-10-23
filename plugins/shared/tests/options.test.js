@@ -50,6 +50,10 @@ const SITE_EXCLUDED = {
   'show-layers': 'site display', 'highlight-small': 'site display', 'show-islands': 'site display', 'show-rings': 'site display',
   'nav-preset': 'site mouse navigation', 'opts-search': 'site settings search',
   'pad-h': 'Custom pad', 'pad-gap': 'Custom pad', 'pad-grip': 'Custom pad', 'pad-margin': 'Custom pad',
+  'base-style':'Hjort browser FDM reinforcement; plugins keep the upstream engine defaults',
+  'base-thickness':'Hjort browser reinforcement multiplier',
+  'base-spread':'Hjort browser reinforcement reach',
+  'cross-reach':'Hjort browser full-height Cross reach',
   'sway-fit': 'manual browser placement only; Auto never fits a small feature',
   'iface': 'a third 3MF object for a second material; the plugins hand the host one body',
   'wall-lines': 'the plugins scale by nozzle diameter but retain 2-line walls (web/nozzle.js)',
@@ -97,7 +101,7 @@ Deno.test('every default, range and choice is the website\'s', () => {
       const got = o.choices.map((c) => `${c.value}=${c.label}`).join(', ');
       assert(got === want, `${o.key}: choices [${got}], site [${want}]`);
       const siteDefault = (site.options.find((c) => c.selected) || site.options[0]).value;
-      assert(o.default === siteDefault, `${o.key}: default ${o.default}, site ${siteDefault}`);
+      assert(o.site === 'fin-mode' ? o.default === 'auto' && siteDefault === 'draw' : o.default === siteDefault, `${o.key}: default ${o.default}, site ${siteDefault}`);
     }
   }
 });

@@ -1,5 +1,20 @@
 # Support Fins
 
+This is the **Hjort Creations working version**, based on
+[upstream Support Fins](https://github.com/gittrahan/support-fins) at
+`c473b30ee3fbd820395e3c53de0c6ce89835d63f` (23 October 2026).
+It includes the current upstream application and our optional FDM reinforcement,
+rounded feet and explicit Sway Fit controls. This browser version starts in Draw;
+the plugins retain upstream's Auto default.
+
+Run `node scripts/serve-local.mjs`, then open **http://127.0.0.1:8735**.
+See [our version's features, validation and limitations](docs/HJORT-VERSION.md).
+Small contributions to upstream remain separate PRs; this combined working version
+is maintained on this fork's `main` and `codex/hjort-current` branches.
+
+The following is the upstream project guide. **printfins.com serves upstream,
+not this customized version.**
+
 **Tip a part on edge, and Support Fins adds the breakaway support fins that make that
 orientation printable — baked right into the STL.**
 

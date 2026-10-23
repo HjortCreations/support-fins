@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Support Fins</title>
+<title>Support Fins · Hjort</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -83,7 +83,7 @@
 <div id="spinner" aria-live="polite"><span class="ring"></span><span data-i18n="generating supports…">generating supports…</span></div>
 
 <header id="topbar">
-  <span class="brand"><img src="favicon.svg" alt="" class="brand-mark"><span class="brand-text">Support&nbsp;Fins</span></span>
+  <span class="brand" title="Hjort Creations working version"><img src="favicon.svg" alt="" class="brand-mark"><span class="brand-text">Support&nbsp;Fins</span></span>
   <!-- accept: the MIME types too, and octet-stream. Android's picker matches by MIME
        and knows none of these extensions, so it greyed every model out (#237); the
        format is read from the bytes (ui/io.js), not the name. -->
@@ -171,7 +171,7 @@
       <button role="menuitem" id="lang-opt-nl">Nederlands</button>
     </div>
   </span>
-  <a class="btn gh more" href="https://github.com/gittrahan/support-fins" target="_blank" rel="noopener"
+  <a class="btn gh more" href="https://github.com/HjortCreations/support-fins" target="_blank" rel="noopener"
      data-i18n-title title="Source code on GitHub. Runs entirely in your browser; no file ever leaves your machine."
      aria-label="Support Fins on GitHub"><svg viewBox="0 0 16 16" width="16" height="16"
      aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span class="lbl">&nbsp;GitHub</span></a>
@@ -274,6 +274,7 @@
        and unfolds in place. A plain <details> like the sections below, so it opens
        from the keyboard and the section memory keeps it open or shut. Build volume
        stays in the top bar. ui/settings.js syncSectionSums writes the line. -->
+  <div class="hint" id="background-status" role="status" hidden><span id="background-message"></span> <button id="background-retry" hidden>Retry calculation</button></div>
   <details class="sec printer" data-sec="printer">
     <summary data-tip-pic="printer" data-i18n-title title="Your printer: nozzle, layer height, support gap, interface material. Click to change.">
       <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6V2h8v4M3 6h10a1.5 1.5 0 0 1 1.5 1.5V11H12v3H4v-3H1.5V7.5A1.5 1.5 0 0 1 3 6z" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
@@ -347,9 +348,9 @@
              reported in the readout. DRAW lets you place a fin by hand. The old fins-only
              "Combined fin" mode was dropped -- it built nothing (and said nothing) on
              parts with no fin sites, which just read as broken. -->
-        <option value="auto" selected data-i18n="Auto — place supports for me">Auto — place supports for me</option>
+        <option value="auto" data-i18n="Auto — place supports for me">Auto — place supports for me</option>
         <option value="full" data-i18n="Full coverage — every overhang">Full coverage — every overhang</option>
-        <option value="draw" data-i18n="Draw — place them by hand">Draw — place them by hand</option>
+        <option value="draw" selected data-i18n="Draw — place them by hand">Draw — place them by hand</option>
       </select>
     </div>
   </div>
@@ -487,6 +488,14 @@
         <span><span data-i18n="Pad spread">Pad spread</span> <span class="mut">mm</span></span>
         <input type="number" id="pad-margin" min="1" max="12" step="0.5" value="4">
       </label>
+      <div id="hjort-reinforcement">
+      <label class="fld row" title="Local FDM reinforcement. Taper uses the thickness and end spread below. Full-height Cross adds a transverse rib up to the original full-width body, leaving the breakaway contact clear. Blocked arms are shortened or omitted. Print-test before relying on it for tall parts.">
+        <span>Base reinforcement</span><select id="base-style"><option value="taper" selected>Tapered base</option><option value="cross">Full-height Cross</option></select>
+      </label>
+      <label class="fld row" title="Multiply the body's thickness at the plate; taper back to its original gauge above. 1 keeps the original thickness."><span>Base thickness ×</span><input type="number" id="base-thickness" min="1" max="4" step="0.25" value="1"></label>
+      <label class="fld row" id="base-spread-fld" title="Extra plate reach per end. 0 keeps the original footprint. Blocked ends stay short."><span>Base spread / end · mm</span><input type="number" id="base-spread" min="0" max="300" step="1" value="0"></label>
+      <label class="fld row" id="cross-reach-fld" hidden title="Requested plate reach per Cross arm. Independent of brace depth and base thickness. Arms may shorten or be omitted to keep clear."><span>Cross reach / arm · mm</span><input type="number" id="cross-reach" min="5" max="80" step="1" value="20"></label>
+      </div>
       <!-- Wall lines (web/nozzle.js, after #210): lines across a wall, for a tall part
            or a big printer. 2 is the tuned wall; the tip and tines stay one line. -->
       <label data-tip-pic="wall-lines" data-i18n-title class="fld row" title="How many nozzle lines thick the walls, wedges and sway braces are. 2 is the standard wall. More lines make stiffer supports for tall parts. The contact tip and tines stay one line wide, so the supports still break off the same way.">

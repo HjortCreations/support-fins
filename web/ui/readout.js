@@ -226,6 +226,8 @@ function updateDrawReadout(built, ms) {
   // A brace you place by hand is built even where Auto would refuse to stand one,
   // so say what it is doing: below its first tine it holds nothing and nothing
   // holds it, which is worth knowing but is your call to make.
+  const limited=ok.filter(w=>['partial','skipped'].includes(w.info?.baseReinforcement?.status));
+  if(limited.length)lead.push('Base reinforcement limited on '+limited.length+' support(s); original supports remain.');
   const fitted = ok.filter((w) => w.kind === 'sway' && w.info?.fitted);
   if (fitted.length) {
     const mm = Math.round(Math.max(...fitted.map((w) => w.info.baseOffset ?? 0)));
@@ -347,6 +349,8 @@ function updateFinReadout(built, ms) {
   // how-to-fix, goes behind the (i). Split so the panel doesn't read as a wall.
   const lead = [];
   const help = [];
+  const baseReport=built?.baseReinforcement;
+  if(baseReport&&(baseReport.partial||baseReport.skipped))lead.push('Base reinforcement: '+(baseReport.partial??0)+' limited, '+(baseReport.skipped??0)+' omitted; original supports remain.');
   if (!n && !drawnOk) {
     // Nothing placed -- the box already says "none possible"; the why goes in the
     // (i), since it's a paragraph and the user can hover for it.

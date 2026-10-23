@@ -1,15 +1,17 @@
 /**
- * Building the supports: the request options, the Worker (with an inline
- * fallback), and turning a finished buildFins result into the fin and pad meshes
+ * Building the supports: the request options, the background Worker,
+ * and turning a finished buildFins result into the fin and pad meshes
  * on screen. Owns the last build and the triangles the export reads.
  */
 import * as THREE from 'three';
-import { buildFins, FIN, PAD } from '../fins.js';
+import { FIN, PAD } from '../fins.js';
 import { BRACE, PROP } from '../prop.js';
 import { CUT } from '../cutout.js';
 import { nozzle, wallLines } from '../nozzle.js';
 import { el } from './dom.js';
 import { t } from './i18n.js';
+import {geometryQueue,reportTask,backgroundError} from './background.js';
+export {backgroundError};
 import { scene, meshFrom, ifaceMaterial, clip, requestRender } from './scene.js';
 import {
   removeMode, syncRemoveUI, cancelRemove, clearFinHover, adoptFins, forgetFins,
@@ -17,9 +19,9 @@ import {
 import { updateReadout } from './readout.js';
 import { islands } from './islands.js';
 import {
-  drawnTris, drawnMesh, drawMaterial, drawShown, clearPreview, rebuildDrawn,
+  drawnTris, drawnMesh, drawMaterial, drawShown, clearPreview, rebuildDrawn, manualPending,
 } from './walls.js';
-import { finsVisible, finMode, autoLike } from './settings.js';
+import { finsVisible, finMode, autoLike, baseTunables } from './settings.js';
 import { topology, rotM3, lastResult, updateFit } from './part.js';
 import { scheduleParked } from './parkedbuild.js';
 
@@ -75,9 +77,7 @@ export function activeWalls() {
 // DOM/three.js dependency, so it runs in a Worker instead (web/finworker.js): the
 // current fins stay on screen, greyed, while the new ones compute, and the UI
 // stays live. A generation counter drops the reply from a pose that has since
-// been superseded, and if a Worker can't be created (e.g. the page was opened
-// from file://) it falls back to building inline.
-let finWorker;               // undefined = not tried yet, null = unavailable, else a Worker
+// been superseded. A failure retries in a fresh worker, then offers Retry.
 let finGen = 0;              // bumped per request; a reply with a stale id is ignored
 let finT0 = 0;               // start time of the in-flight build, for the readout timing
 let lastOpts = null;
@@ -85,7 +85,7 @@ let finSpinnerTimer = null;  // shows the spinner only if a build runs past ~1s
 let finBusy = false;         // a worker build is outstanding (used to supersede it)
 /** A worker build is outstanding: the fins on screen are the last settings', not
  *  the current ones -- Export waits, so a file never carries the wrong ones (#279). */
-export const buildPending = () => finBusy;
+export const buildPending = () => finBusy || manualPending();
 
 // Reveal the spinner only for builds that actually run long, so a sub-second
 // rebuild never flashes it. Cleared the moment the build lands (applyBuilt).
@@ -129,7 +129,7 @@ export function finOpts(isl = islands) {
            // Worker with its own copy of fins.js / prop.js, which never sees what
            // the gap and pad fields set on this page's copy (fins.js
            // applyTunables). Without this, Auto mode always built the defaults.
-           tunables: { roundFeet: FIN.roundFeet, padH: FIN.padH,
+           tunables: { ...baseTunables(), roundFeet: FIN.roundFeet, padH: FIN.padH,
                        padGrab: PAD.grab, padStyle: PAD.style, padCustom: { ...PAD.custom },
                        propGap: PROP.gap,
                        tallRibsHeight: BRACE.tallH,
@@ -162,102 +162,32 @@ export function swayOpts() {
            crossAbove: el('tall-ribs').checked ? BRACE.tallH : Infinity };
 }
 
-function makeFinWorker() {
-  const w = new Worker(new URL('../finworker.js', import.meta.url), { type: 'module' });
-  w.onmessage = (e) => {
-    if (e.data.id !== finGen) return;              // a newer pose already superseded this build
-    finBusy = false;
-    if (e.data.error) {                            // worker failed -- build inline so support still appears
-      applyBuilt(buildFins(topology, lastResult, rotM3.elements, lastOpts));
-      return;
-    }
-    applyBuilt(e.data.built);
-  };
-  // A worker-level error must not leave the UI wedged (spinner up, fins greyed):
-  // drop to inline for good, and rebuild the request it dropped inline now --
-  // otherwise the panel sits on "generating supports…" until the next change.
-  // preventDefault: a handled worker crash is not a page error (the badge in
-  // index.html would light up for a build that recovered inline)
-  w.onerror = (e) => {
-    e.preventDefault();
-    const dropped = finBusy;
-    finWorker = null; finBusy = false; clearSpinner();
-    if (dropped) refreshFins();
-  };
-  return w;
-}
-
-function getFinWorker() {
-  if (finWorker === undefined) {
-    try { finWorker = makeFinWorker(); } catch { finWorker = null; }
-  }
-  return finWorker;
-}
-
-// Abandon an in-flight build when a newer pose arrives. Without this, rapid pose
-// changes (Suggest → lay flat → rotate) queued 2-3 slow builds behind each other
-// in the single worker, so the fresh result only landed many seconds later --
-// the spinner looked stuck and the stale fins lingered. Terminating discards the
-// running + queued work so only the latest pose computes.
 function supersedeBuild() {
-  if (finBusy && finWorker) { finWorker.terminate(); finWorker = undefined; }
-  finBusy = false;
+  if(finBusy)geometryQueue.dispose();
+  geometryQueue.cancel('auto');finBusy=false;
 }
-
-export function refreshFins() {
-  scheduleParked();                    // the parked models follow the plate's settings
-  if (!finsVisible || !lastResult || !topology) {
-    supersedeBuild();                  // no build wanted now: drop any in-flight one so it can't re-add fins
-    clearSpinner();
-    for (const m of [finMesh, padMesh]) { if (m) { scene.remove(m); m.geometry.dispose(); } }
-    finMesh = padMesh = null;
-    clearFinHover();
-    finTris = padTris = [];
-    forgetFins();
-    if (removeMode) cancelRemove();
-    clearPreview();
-    rebuildDrawn();
-    updateReadout(null);
-    return;
+export async function refreshFins() {
+  scheduleParked();
+  if(!finsVisible||!lastResult||!topology){
+    finGen++;supersedeBuild();if(!topology){geometryQueue.dispose();geometryQueue.model=null;}clearSpinner();reportTask('auto',false);
+    for(const m of [finMesh,padMesh])if(m){scene.remove(m);m.geometry.dispose();}
+    finMesh=padMesh=null;finTris=padTris=[];clearFinHover();forgetFins();
+    if(removeMode)cancelRemove();clearPreview();rebuildDrawn();updateReadout(null);return;
   }
-
-  finT0 = performance.now();
-  lastOpts = finOpts();
-  supersedeBuild();                    // discard any older in-flight pose before starting this one
-  const worker = getFinWorker();
-  if (!worker) {                       // no worker available: build inline (old behaviour)
-    for (const m of [finMesh, padMesh]) { if (m) { scene.remove(m); m.geometry.dispose(); } }
-    finMesh = padMesh = null;
-    finTris = padTris = [];
-    applyBuilt(buildFins(topology, lastResult, rotM3.elements, lastOpts));
-    return;
-  }
-
-  // Leave the current fins on screen (greyed) until the fresh build lands, so the
-  // viewport never blanks mid-recalc. markFinsStale also shows "generating supports…";
-  // the spinner joins it only if the build runs past the arm delay.
-  finGen++;
-  finBusy = true;
-  markFinsStale();
-  armSpinner();
-
-  // inside.js caches its spatial grid on topology._insideGrid, and that grid holds
-  // a CLOSURE (`cell`) which structured-clone cannot copy. The grid only exists
-  // once something has queried the part on the main thread -- which Suggest
-  // orientation does -- so before that postMessage(topology) worked and after it
-  // threw DataCloneError, leaving the build wedged. Send a shallow copy without
-  // the cache (the worker rebuilds its own grid), and if a clone ever fails
-  // anyway, build inline so the UI can never get stuck waiting on a reply.
-  const topoMsg = workerTopology(topology);
-  try {
-    worker.postMessage({ id: finGen, topology: topoMsg, result: lastResult, rot: rotM3.elements, opts: lastOpts });
-  } catch (err) {
-    console.warn('support worker postMessage failed; building inline', err);
-    finBusy = false;
-    for (const m of [finMesh, padMesh]) { if (m) { scene.remove(m); m.geometry.dispose(); } }
-    finMesh = padMesh = null;
-    finTris = padTris = [];
-    applyBuilt(buildFins(topology, lastResult, rotM3.elements, lastOpts));
+  finT0=performance.now();lastOpts=finOpts();supersedeBuild();
+  const generation=++finGen,model=topology;
+  finBusy=true;reportTask('auto',true);markFinsStale();armSpinner();
+  try{
+    const reply=await geometryQueue.run('auto',model,{kind:'auto',result:lastResult,rot:[...rotM3.elements],opts:lastOpts});
+    if(!reply||generation!==finGen||topology!==model)return;
+    reportTask('auto',false);applyBuilt(reply.built);
+  }catch(error){
+    if(generation!==finGen||topology!==model)return;
+    console.error('Background support calculation failed',error);finBusy=false;clearSpinner();
+    reportTask('auto',false,error);
+    for(const m of [finMesh,padMesh])if(m){scene.remove(m);m.geometry.dispose();}
+    finMesh=padMesh=null;finTris=padTris=[];lastBuilt=null;forgetFins();
+    el('s-fins').textContent='Support calculation failed — retry';updateFit();
   }
 }
 
@@ -271,7 +201,7 @@ export function workerTopology(topo) {
 }
 
 // Turn a finished buildFins result into meshes + readout. Shared by the worker
-// reply and the inline fallback. buildFins runs in BOTH modes: in Suggest it
+// reply. buildFins runs in BOTH modes: in Suggest it
 // places the walls; in Draw it is called only for the bed pad + seating verdict
 // (a tilted part rests on an edge and needs a pad however its walls are placed,
 // and that logic lives in fins/pad.js + fins/seating.js), so Draw ignores the

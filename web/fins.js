@@ -38,6 +38,7 @@ import { floatingPieces } from './pieces.js';
 import { findWallPatches } from './planes.js';
 import { BRACE, buildProps, crestOn, crestPart, noProps, PROP } from './prop.js';
 import { buildSwayBraces } from './sway.js';
+import { baseSettings, reinforceBuiltBases } from './base-reinforcement.js';
 import { CUT, CUTOUT_PATTERNS } from './cutout.js';
 import { FIN } from './fins/config.js';
 import { buildPad, PAD } from './fins/pad.js';
@@ -91,6 +92,10 @@ const FOOT_GAP = PROP.footGap;
 
 export function applyTunables(t = {}) {
   FIN.roundFeet = PROP.roundFeet = PERP.roundFeet = t?.roundFeet === true;
+  const base = baseSettings(t?.baseThickness, t?.baseSpread);
+  FIN.baseThickness = base.baseThickness; FIN.baseSpread = base.baseSpread;
+  FIN.baseStyle = t?.baseStyle === 'cross' ? 'cross' : 'taper';
+  FIN.crossReach = Number.isFinite(t?.crossReach) ? Math.max(5, Math.min(80, t.crossReach)) : 20;
   if (!t) return;
   const set = (obj, key, v) => { if (Number.isFinite(v)) obj[key] = v; };
   set(FIN, 'padH', t.padH);
@@ -143,7 +148,9 @@ export function buildFins(topo, result, rot, opts = {}) {
   const built = buildFinsAndBraces(topo, result, rot, opts);
   // Tall walls get face ribs, last, around everything placed (fins/tall.js). Draw
   // ribs its own walls on the page (draw.js braceTall).
-  if (opts.mode !== 'draw' && opts.tallRibs !== false) braceTallWalls(topo, result, rot, built);
+  if (opts.mode !== 'draw' && opts.tallRibs !== false && (FIN.baseStyle !== 'cross' || PROP.tineDir === 'vertical')) braceTallWalls(topo, result, rot, built);
+  if (PROP.tineDir !== 'vertical') reinforceBuiltBases(built, topo, result, rot, FIN, PROP.th,
+    Math.max(0.01, Math.min(PROP.gap, PROP.sideClear) * 0.95));
   crestPart(null);   // the crest's part is only for this build (a Worker keeps no mesh)
   forgetSeated(topo);   // nor the seated part: a page building inline would hold it
   // A piece of the part that starts in mid-air (a cut clean through, a loose
@@ -184,7 +191,7 @@ function buildFinsAndBraces(topo, result, rot, opts = {}) {
       // does the drawn walls. The page sends the threshold through swayOpts (it is
       // Infinity when the box is unticked); a caller that says nothing -- the
       // plugins, the golden scenes -- keeps the plain brace it always got.
-      crossAbove: opts.tallRibs === false ? Infinity : (opts.sway?.crossAbove ?? Infinity) });
+      crossAbove: opts.tallRibs === false || (FIN.baseStyle === 'cross' && PROP.tineDir !== 'vertical') ? Infinity : (opts.sway?.crossAbove ?? Infinity) });
   // Each brace also gets a fin record: the Auto view draws and exports only the
   // triangles some record claims (per-fin removal), so an unrecorded brace would
   // be counted in the readout but never shown or written out.
@@ -195,7 +202,7 @@ function buildFinsAndBraces(topo, result, rot, opts = {}) {
     height: r.height, length: r.depth, tines: r.tines, rows: 0, stilt: 0, lean: 0, bearing: 0, site: null,
     id: id++, kind: 'sway',
     triRanges: [[r.triRange[0] + base, r.triRange[1] + base]],
-    line: r.foot, span: r.depth,
+    line: r.foot, span: r.depth, wallThickness: r.th,
   }));
   return {
     ...built,

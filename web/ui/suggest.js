@@ -4,7 +4,7 @@ import { t, tn } from './i18n.js';
  * and the "no support" / "bores clean" verdicts, and turn the part on a click.
  */
 import * as THREE from 'three';
-import { suggestOrientations, layerVerdict } from '../orient.js';
+import { layerVerdict } from '../orient.js';
 import { el } from './dom.js';
 import { addBadge } from './toolbar.js';
 import { histPush } from './history.js';
@@ -154,51 +154,46 @@ export function clearSuggestionMark() {
 /**
  * Rank the part's poses off the page thread (web/suggestworker.js): a big part took
  * 15-35 s and froze the page doing it here. The Worker gets the same tunables an
- * Auto build sends, so it scores with the page's gap, pad and nozzle. If no Worker
- * can run (file://, a clone or worker failure) it ranks here, as it always did.
+ * Auto build sends, so it scores with the page's gap, pad and nozzle. A failure
+ * retries once in a fresh worker, then leaves the button available to try again.
  */
 let rankId = 0;
 let cancelRanking = null;   // drops the ranking in flight; it then resolves to null
 function rankPoses(topo, thr) {
-  let cancelled = false;
-  const inline = () => new Promise((resolve, reject) => {
-    // let the button repaint before the solve blocks the thread
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (cancelled) { resolve(null); return; }
-      try { resolve(suggestOrientations(topo, { top: 3, threshold: thr })); } catch (err) { reject(err); }
-    }));
-  });
-  let w = null;
-  try {
-    w = new Worker(new URL('../suggestworker.js', import.meta.url), { type: 'module' });
-  } catch { /* no Worker here: rank inline */ }
+  let w = null, attempts = 0, settled = false;
   const id = ++rankId;
-  return new Promise((resolve) => {
-    const cancel = () => { cancelled = true; finish(null); };
-    const done = () => { if (cancelRanking === cancel) cancelRanking = null; };
-    const finish = (v) => { done(); w?.terminate(); resolve(v); };
-    // inline stays cancellable until it runs: it checks `cancelled` first
-    const fallBack = () => { w?.terminate(); w = null; resolve(inline().finally(done)); };
-    cancelRanking = cancel;
-    if (!w) { fallBack(); return; }
-    w.onmessage = (e) => {
-      if (e.data.id !== id) return;
-      if (e.data.error) { console.warn('suggest worker failed; ranking inline', e.data.error); fallBack(); return; }
-      finish(e.data.ranked);
+  return new Promise((resolve, reject) => {
+    const finish = (v, error) => {
+      if (settled) return;
+      settled = true;
+      if (cancelRanking === cancel) cancelRanking = null;
+      w?.terminate();
+      if (error) reject(error); else resolve(v);
     };
-    w.onerror = (e) => { e.preventDefault(); fallBack(); };   // handled: no error badge
-    w.onmessageerror = () => fallBack();
-    // the inside grid holds a closure structured clone can't copy (finbuild.js)
-    const topoMsg = { ...topo };
-    delete topoMsg._insideGrid;
-    delete topoMsg.vid;         // islands.js's too: the engine never reads it (19 MB at 1.5M faces)
-    delete topoMsg._vgraph;    // islands.js's vertex graph: page-only, and big
-    try {
-      w.postMessage({ id, topology: topoMsg, threshold: thr, tunables: supportTunables() });
-    } catch (err) {
-      console.warn('suggest worker postMessage failed; ranking inline', err);
-      fallBack();
+    const cancel = () => finish(null);
+    cancelRanking = cancel;
+    const failed = (error) => {
+      if (settled) return;
+      w?.terminate(); w = null;
+      if (attempts++ < 1) start(); else finish(null, error);
+    };
+    function start() {
+      try {
+        const worker = new Worker(new URL('../suggestworker.js', import.meta.url), { type: 'module' });
+        w = worker;
+        worker.onmessage = ({data}) => {
+          if (settled || w !== worker || data.id !== id) return;
+          if (data.error) failed(new Error(data.error)); else finish(data.ranked);
+        };
+        worker.onerror = (e) => { e.preventDefault(); if(w === worker) failed(new Error('Orientation worker failed')); };
+        worker.onmessageerror = () => { if(w === worker) failed(new Error('Orientation worker reply could not be read')); };
+        // The page's grid and vertex graph are not worker inputs.
+        const topoMsg = { ...topo };
+        delete topoMsg._insideGrid; delete topoMsg.vid; delete topoMsg._vgraph;
+        worker.postMessage({ id, topology: topoMsg, threshold: thr, tunables: supportTunables() });
+      } catch (error) { failed(error); }
     }
+    start();
   });
 }
 
@@ -237,6 +232,10 @@ el('suggest-orient').addEventListener('click', () => {
     }
   }).catch((err) => {
     console.error('Suggest orientation failed', err);
+    if (topo !== topology) return;
+    el('suggest-list').hidden = true;
+    el('suggest-note').textContent = t('Could not rank orientations. Try Suggest orientation again.');
+    el('suggest-note').className = 'hint';
   }).finally(() => {
     btn.disabled = false; btn.textContent = t('Suggest orientation');
   });

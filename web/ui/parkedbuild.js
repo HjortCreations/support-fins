@@ -14,10 +14,10 @@
 import * as THREE from 'three';
 import { analyze } from '../overhangs.js';
 import { findIslands } from '../islands.js';
-import { buildFins } from '../fins.js';
+import {reportTask} from './background.js';
 import { assignKeys, matchRemoved } from './finkeys.js';
 import { finOpts, workerTopology, buildPending } from './finbuild.js';
-import { sweepDrawn, printTriangles } from './walls.js';
+import {requestsFor,manualOptions,applyDrawItems} from './walls.js';
 import { threshold } from './part.js';
 import { finMode, finsVisible, autoLike } from './settings.js';
 import { settingsKey } from './history.js';
@@ -74,52 +74,38 @@ function next() {
   }
   const m = plate.models.find((s) => parked(s) && s.stash.finsKey !== key);
   if (m) build(m, key);
+  else reportTask('parked',false,plate.models.some(m=>parked(m)&&m.stash.buildError)?new Error('A parked model needs retry'):null);
 }
 
-function build(m, key) {
-  const s = m.stash, mesh = s.part.mesh, topo = s.part.topology;
-  if (!finsVisible) { land({ m, s, key }, null); return; }
-  const rot = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(mesh.quaternion)).elements;
-  const res = analyze(topo, threshold, rot);
-  const opts = finOpts(finMode === 'full' ? findIslands(topo, res, rot) : undefined);
-  job = { id: ++gen, m, s, key, topo, res, rot, mesh, opts };
-  const w = getWorker();
-  if (w) {
-    try {
-      w.postMessage({ id: job.id, topology: workerTopology(topo), result: res, rot, opts });
-      return;
-    } catch (err) {
-      console.warn('parked support build: postMessage failed; building inline', err);
-    }
-  }
-  land(job, buildFins(topo, res, rot, opts));
+addEventListener('retry-supports',()=>{for(const m of currentPlate().models)if(m.stash){m.stash.finsKey=null;m.stash.buildError=false;}
+  reportTask('parked',false);scheduleParked();});
+function build(m,key){
+  const s=m.stash,mesh=s.part.mesh,topo=s.part.topology;
+  s.buildError=false;
+  if(!finsVisible){land({m,s,key},null);return;}
+  const rot=new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(mesh.quaternion)).elements;
+  const res=analyze(topo,threshold,rot),opts=finOpts(finMode==='full'?findIslands(topo,res,rot):undefined);
+  const at=new THREE.Vector3(res.offset.x,res.offset.y,res.offset.z);
+  const manual={requests:requestsFor(s.state.walls,(v,out)=>out.copy(v).applyQuaternion(mesh.quaternion).add(at)),
+    options:manualOptions(),removed:s.state.removedSigs};
+  job={id:++gen,m,s,key,topo,res,rot,mesh,opts,manual,attempt:0};reportTask('parked',true);send(job);
 }
-
-function getWorker() {
-  if (worker !== undefined) return worker;
-  try {
-    worker = new Worker(new URL('../finworker.js', import.meta.url), { type: 'module' });
-  } catch {
-    return (worker = null);
-  }
-  worker.onmessage = (e) => {
-    const j = job;
-    if (!j || e.data.id !== j.id) return;
-    let built = e.data.built;
-    if (e.data.error) {
-      // the worker failed: build inline; failing there too, the model keeps no fins
-      // rather than hold every later build (and an export waiting on them)
-      try { built = buildFins(j.topo, j.res, j.rot, j.opts); } catch (err) { console.error(err); built = null; }
-    }
-    land(j, built);
-  };
-  // as finbuild.js does: a crashed worker is not a page error, and builds go inline
-  worker.onerror = (e) => {
-    e.preventDefault();
-    worker = null;
-    job = null;
-    scheduleParked();
-  };
+function send(j){
+  try{getWorker().postMessage({id:j.id,topology:workerTopology(j.topo),result:j.res,rot:j.rot,opts:j.opts,manual:j.manual});}
+  catch(error){failed(j,error);}
+}
+function failed(j,error){
+  worker?.terminate();worker=undefined;
+  if(!current(j)||settingsKey()!==j.key){job=null;reportTask('parked',false);scheduleParked();return;}
+  if(j.attempt++<1){send(j);return;}
+  console.error('Background parked model calculation failed',error);j.s.buildError=true;reportTask('parked',false,error);land(j,null);
+}
+function getWorker(){
+  if(worker)return worker;
+  worker=new Worker(new URL('../finworker.js',import.meta.url),{type:'module'});
+  worker.onmessage=({data})=>{const j=job;if(!j||data.id!==j.id)return;
+    if(data.error){failed(j,new Error(data.error));return;}reportTask('parked',false);land(j,data.built);};
+  worker.onerror=e=>{e.preventDefault();if(job)failed(job,new Error('Background parked model worker failed'));};
   return worker;
 }
 
@@ -144,12 +130,7 @@ function land(j, built) {
     // its hand-placed supports where walls.js drawShown would show them
     const walls = s.state.walls;
     if (walls.length && (finMode === 'draw' || autoLike())) {
-      const at = new THREE.Vector3(j.res.offset.x, j.res.offset.y, j.res.offset.z);
-      for (const t of sweepDrawn({
-        topology: j.topo, res: j.res, rot: j.rot, tris: printTriangles(j.topo, j.rot, j.res.offset), walls,
-        toWorld: (v, out) => out.copy(v).applyQuaternion(j.mesh.quaternion).add(at),
-        auto: autoLike() ? built : null, gone,
-      })) tris.push(t);
+      if(built.manual){applyDrawItems(walls,built.manual.items);for(const t of built.manual.triangles)tris.push(t);}
     }
     for (const t of built.padTriangles ?? []) tris.push(t);
   }

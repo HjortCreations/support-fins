@@ -10,6 +10,16 @@ deno test --allow-read tests/
 
 ## What's pinned (and why it exists)
 
+**`base_reinforcement.test.js`, `cross_base.test.js`, `cross_thickness.test.js`** --
+the Hjort browser's optional FDM bases: independent thickness/spread/reach, actual
+body gauge nearly to the top, short/omitted blocked arms, unchanged contacts,
+owned ranges and closed STL/3MF/interface geometry. Neutral settings preserve
+upstream geometry; nozzle rules are the current upstream ones.
+
+**`hjort_worker.test.js`** -- a bounded latest-request queue, cancellation across
+models, one fresh-worker retry and no inline fallback. A real module worker must
+match direct-engine Fit/Cross/contact geometry and Auto removal ownership.
+
 **`sway_clearance.test.js`** -- square-ended Sway feet and bodies keep the 1 mm
 clearance without imaginary round caps rejecting opposite sides of a thin wall.
 Pins rotated 2/6 mm walls, cross ribs, duplicate refusal, actual overlap and gaps

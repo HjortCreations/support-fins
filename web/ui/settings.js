@@ -1,4 +1,5 @@
 import { t } from './i18n.js';
+import { reportTask } from './background.js';
 /**
  * The options panel: support mode, the fins / "+ Add" toggles, bed pad style,
  * tines, sway braces, gap, cutouts, material profile, and the collapsible
@@ -27,11 +28,9 @@ export function setFinsVisible(v) { finsVisible = v; }
 // vertical. A user who loads a part and exports should get the support that
 // supports.
 //
-// DEFAULT IS 'auto': click "Add fins" and the tool places the supports for you
-// (tined combined fins on the grippable overhangs, plain props on the rest). Draw
-// is the by-hand path. ('prop' still exists internally -- Draw calls it for the
-// bed pad + seating verdict, and it is the geometry Auto props with.)
-export let finMode = 'auto';
+// This fork starts in Draw for manual placement. Auto remains available and is
+// still the upstream and plugin default. ('prop' is the internal pad/seating path.)
+export let finMode = 'draw';
 export function setFinMode(v) { finMode = v; }
 // FULL COVERAGE ('full', fins/fill.js) is Auto plus walls under the red Auto left
 // bare, so everything Auto offers -- the coverage slider, sway braces, per-fin
@@ -159,6 +158,19 @@ el('rounded-feet').addEventListener('input', () => {
   FIN.roundFeet = PROP.roundFeet = el('rounded-feet').checked;
   debouncedRefresh();
 });
+export function baseTunables() {
+  const value=(id,lo,hi,fallback)=>{const v=el(id).valueAsNumber;return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):fallback;};
+  return {baseStyle:el('base-style').value,baseThickness:value('base-thickness',1,4,1),
+    baseSpread:value('base-spread',0,300,0),crossReach:value('cross-reach',5,80,20)};
+}
+function syncBaseSettings(){
+  const v=baseTunables();Object.assign(FIN,v);
+  el('base-spread-fld').hidden=v.baseStyle==='cross';
+  el('cross-reach-fld').hidden=v.baseStyle!=='cross';
+}
+for(const id of ['base-style','base-thickness','base-spread','cross-reach']){
+  el(id).addEventListener('input',()=>{syncBaseSettings();debouncedRefresh();});
+}
 // Tine grip only means anything when the tines are on, so hide its slider with the
 // toggle (keeps the panel honest -- no dead control).
 // Tine grip + layer height only matter when Tines is on -- hide both otherwise.
@@ -172,6 +184,7 @@ let gripTip = null;
 function syncTineGrip() {
   const on = el('tines').checked;
   el('rounded-feet-fld').hidden = el('tine-dir').value === 'vertical';
+  el('hjort-reinforcement').hidden = el('tine-dir').value === 'vertical';
   el('tinegrip-fld').hidden = !on;
   el('tinedir-fld').hidden = !on;
   const pins = on && el('tine-dir').value === 'vertical';
@@ -194,13 +207,13 @@ window.addEventListener('languagechange', syncTineGrip);   // the swapped toolti
 // Tine direction (GitHub #309): vertical lays resin pins (prop/pins.js). This page's
 // copy is set here for Draw; the Worker gets it in the build's tunables.
 export function tineDirTunables() {
-  return { roundFeet: el('rounded-feet').checked, tineDir: el('tine-dir').value, pinDepth: el('pin-depth').valueAsNumber };
+  return { ...baseTunables(), roundFeet: el('rounded-feet').checked, tineDir: el('tine-dir').value, pinDepth: el('pin-depth').valueAsNumber };
 }
 // Resin cures joined walls into one block (#309), so picking a direction sets
 // Separate walls to match; the box is the user's to change after.
 el('tine-dir').addEventListener('change', (e) => {
   if (e.isTrusted) el('separate-walls').checked = el('tine-dir').value === 'vertical';
-  applyTunables(tineDirTunables()); syncTineGrip(); refreshFins();
+  applyTunables(tineDirTunables()); syncTineGrip(); syncDrawControls(); refreshFins();
 });
 el('pin-depth').addEventListener('input', () => { applyTunables(tineDirTunables()); debouncedRefresh(); });
 el('tine-density').addEventListener('input', () => debouncedRefresh());
@@ -226,6 +239,11 @@ el('sway').addEventListener('change', () => {
   refreshFins();
 });
 el('tines').addEventListener('change', syncSway);
+el('background-retry').addEventListener('click', () => {
+  reportTask('place', false);
+  dispatchEvent(new Event('retry-supports'));
+  refreshFins();
+});
 el('full-brace-depth').addEventListener('change', () => refreshFins());
 el('sway-fit').addEventListener('change', () => { clearPreview(); syncDrawControls(); });
 for (const id of ['sway-from', 'sway-spacing', 'sway-depth', 'sway-cross-height']) {
@@ -444,6 +462,7 @@ el('augment-toggle').addEventListener('click', () => {
 /** Bring the pad, tine, sway, cutout and nozzle state in line with the controls
  *  (a reload can keep the browser's last values). Called once at startup. */
 export function initSettings() {
+  syncBaseSettings();
   syncTineGrip();
   syncPadStyle();
   syncSway();
