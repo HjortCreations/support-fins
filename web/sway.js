@@ -30,8 +30,8 @@
  * module depends on neither: the caller passes the material's numbers, whether it
  * runs in the Worker (after fins.js applyTunables) or on the page (Draw).
  */
-import { findWallPatches, patchProbe, patchPoint, tAtZ, zAt } from './planes.js';
-import { insidePart } from './inside.js';
+import { findWallPatches, manualPatchAtFace, patchProbe, patchPoint, tAtZ, zAt } from './planes.js';
+import { insidePart, triClosest } from './inside.js';
 import { kissEnds } from './kiss.js';
 import { braceCrossRib } from './prop/brace.js';
 import { PROP } from './prop/config.js';
@@ -118,6 +118,8 @@ function settings(opts = {}) {
     // a brace placed BY HAND is built anyway and reports the stilt instead. The
     // tool suggests, the person decides -- the same split as the rest of the app.
     allowStilt: opts.allowStilt === true,
+    manualFit: opts.manualFit === true,
+    baseOffset: opts.manualFit ? Math.max(0, num(opts.baseOffset, 0)) : 0,
   };
 }
 
@@ -227,14 +229,15 @@ function lowestHit(tris, fr, uLo, uHi, outline) {
  */
 export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
   const S = settings(opts);
-  if (Math.abs(p.n.z) > leanCut()) {
+  if (!S.manualFit && Math.abs(p.n.z) > leanCut()) {
     return { ok: false, reason: 'that face leans too far to stand a brace against — pick an upright side' };
   }
   const fr = { ...frameOf(p), uDir: { x: p.u.x, y: p.u.y } };
 
   // How much of the face this column actually crosses, 1mm at a time.
   let fz0 = Infinity, fz1 = -Infinity;
-  for (let z = Math.max(0, p.z0); z <= p.z1 + 1e-6; z += 1) {
+  const step = S.manualFit ? Math.min(1, Math.max(0.05, (p.z1 - p.z0) / 8)) : 1;
+  for (let z = Math.max(0, p.z0); z <= p.z1 + 1e-6; z += step) {
     if (patchProbe(p, uc, tAtZ(p, 0, z)) !== null) {
       if (z < fz0) fz0 = z;
       if (z > fz1) fz1 = z;
@@ -242,13 +245,14 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
   }
   if (fz1 === -Infinity) return { ok: false, reason: 'there is no face under that spot to brace' };
 
-  let H = fz1 - SWAY.topClear;
-  if (H < SWAY.minRibH) {
+  let H = fz1 - (S.manualFit ? 0 : SWAY.topClear);
+  const minRibH = S.manualFit ? Math.max(1.2, SWAY.footH + 2 * S.layerH) : SWAY.minRibH;
+  if (H < minRibH) {
     return { ok: false, reason: `that face only reaches ${fz1.toFixed(0)}mm up — too short to need a brace` };
   }
   if (Number.isFinite(opts.maxHeight)) {
     H = Math.min(H, opts.maxHeight);
-    if (H < SWAY.minRibH) return { ok: false, reason: 'that’s too low for a brace — move up the side' };
+    if (H < minRibH) return { ok: false, reason: 'that’s too low for a brace — move up the side' };
   }
   const thFor = (h) => Math.min(SWAY.thMax, SWAY.thMin + SWAY.thPerMm * h);
   let th = thFor(H);
@@ -286,11 +290,15 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
     wIn = shiftIn(half) + S.gap;
     const a = fr.sOf(patchPoint(p, wIn, uc, tAtZ(p, wIn, 0)));
     const b = fr.sOf(patchPoint(p, wIn, uc, tAtZ(p, wIn, 1)));
-    sIn0 = a; sInSlope = b - a;
+    sIn0 = a + S.baseOffset; sInSlope = b - a - S.baseOffset / H;
     D0 = Math.max(SWAY.minDepth, S.uncappedDepth ? S.reach * H : Math.min(SWAY.maxDepth, S.reach * H));
+    if (S.manualFit) {
+      D0 += S.baseOffset;
+      D0 = Math.max(D0, sInSlope * H + SWAY.topDepth - H);
+    }
     insets = [];
     heights = [0, H];
-    if (Number.isFinite(opts.maxHeight)) {
+    if (!S.manualFit && Number.isFinite(opts.maxHeight)) {
       const n = Math.ceil(H / 8 - 1e-6);   // a top on a band edge (16 mm) gives 2 bands, not 3 from a round-trip's 1e-15
       heights = Array.from({ length: n + 1 }, (_, i) => H * i / n);
       const bands = heights.slice(1).map((z, i) => shiftIn(half, heights[i], z) + S.gap);
@@ -314,6 +322,9 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
   let hit = Infinity;
   for (let iter = 0; iter < 6; iter++) {
     shape();
+    if (S.manualFit && sInSlope < -1 - 1e-6) {
+      return { ok: false, reason: 'a fin here would lean inward beyond 45° — try the wing’s edge instead' };
+    }
     hit = Infinity;
     for (let i = 0; i < heights.length - 1; i++) {
       const lo = heights[i], hi = heights[i + 1];
@@ -327,6 +338,7 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
       hit = Math.min(hit, lowestHit(partTris, fr, uc - th / 2 - 0.3, uc + th / 2 + 0.3, outline));
     }
     if (hit === Infinity) break;
+    if (S.manualFit) break; // Keep the clicked feature's height; retry with a larger base.
     H = hit - 1.0;
     if (H < SWAY.minRibH) break;
   }
@@ -365,10 +377,11 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
   // Tines: evenly spaced up the face, each snapped into exactly one layer cell.
   let tines = 0, firstGrip = Infinity, stilt = 0;
   if (S.tines) {
-    const zStart = Math.max(fz0 + 0.5, S.gripFrom, SWAY.footH + 0.5);
-    const zEnd = Math.min(fz1, H) - 0.5;
+    const zStart = Math.max(fz0 + (S.manualFit ? 0 : 0.5), S.gripFrom,
+      SWAY.footH + (S.manualFit ? S.layerH : 0.5));
+    const zEnd = Math.min(fz1, H) - (S.manualFit ? S.layerH : 0.5);
     for (let z = zStart; z <= zEnd + 1e-6; z += S.spacing) {
-      const bot = Math.round(z / S.layerH) * S.layerH;
+      const bot = (S.manualFit ? Math.ceil(z / S.layerH - 1e-8) : Math.round(z / S.layerH)) * S.layerH;
       const top = bot + S.layerH;
       if (top > H) break;
       const zMid = bot + S.layerH / 2;
@@ -407,9 +420,12 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
     }
     // A tall rib tied on at a handful of points still lets the part wave about
     // between them, so the grip has to cover a real share of the height too.
-    const wanted = Math.max(SWAY.minTines, Math.floor(SWAY.minGripShare * (zEnd - zStart) / S.spacing));
+    const wanted = S.manualFit ? SWAY.minTines : Math.max(SWAY.minTines,
+      Math.floor(SWAY.minGripShare * (zEnd - zStart) / S.spacing));
     if (tines < wanted) {
-      return { ok: false, reason: 'too little of this face lines up with the brace for its tines to grip — try a flatter part of the side' };
+      return { ok: false, reason: S.manualFit
+        ? `only ${tines} printable grip tines fit here; at least ${wanted} are required — try a taller contact or closer tine spacing`
+        : 'too little of this face lines up with the brace for its tines to grip — try a flatter part of the side' };
     }
     // Everything below the lowest tine is a lone wall holding nothing, and held by
     // nothing. Past this much of it the brace is its own liability, so refuse rather
@@ -462,7 +478,8 @@ export function buildSwayRib(p, uc, partTris, topo, rot, offset, opts = {}) {
   }
   // `stilt`: how far it stands holding nothing before its first tine. Auto keeps this
   // small by refusing; a hand-placed brace reports it so the readout can say so.
-  return { ok: true, tris: out, tines, height: H, depth: D0, th, stilt, foot, halfW: footHalfW, levels,
+  const manual = S.manualFit ? { fitted: true, baseOffset: S.baseOffset } : {};
+  return { ok: true, tris: out, tines, height: H, depth: D0, th, stilt, foot, ...manual, halfW: footHalfW, levels,
            cross, arms, ...(insets.length ? { profiled: true } : {}) };
 }
 
@@ -754,7 +771,7 @@ function patchesFor(topo, rot, offset) {
   const byFace = new Map();
   for (const p of patches) for (const f of p.faces) if (!byFace.has(f)) byFace.set(f, p);
   const partTris = printTriangles(topo, rot, offset);
-  const entry = { key, patches, byFace, partTris };
+  const entry = { key, patches, byFace, partTris, manual: new Map() };
   patchCache.set(topo, entry);
   return entry;
 }
@@ -780,13 +797,21 @@ export function swayAtFace(topo, result, rot, faceIndex, point, opts = {}, avoid
   // advisory here: it builds and reports `stilt` for the readout to mention.
   const cap = Number.isFinite(opts.maxHeight) ? opts.maxHeight : Infinity;
   opts = { allowStilt: true, ...opts, maxHeight: opts.full ? cap : Math.min(point[2], cap) };
-  const { byFace, partTris } = patchesFor(topo, rot, result.offset);
+  const { byFace, partTris, manual } = patchesFor(topo, rot, result.offset);
+  const fittedPatch = (face) => {
+    if (manual.has(face)) return manual.get(face);
+    const found = manualPatchAtFace(topo, rot, result.offset, face);
+    // Rebuilds reuse clicked patches, without retaining every facet of every
+    // place the pointer has visited. Changing pose replaces the entire cache.
+    if (manual.size >= 8) manual.delete(manual.keys().next().value);
+    manual.set(face, found);
+    return found;
+  };
   const p = byFace.get(faceIndex);
-  if (!p) return { ok: false, reason: 'that face is too small or curved to stand a brace against' };
-  const u = point[0] * p.u.x + point[1] * p.u.y;
   const { braces, walls } = avoidance(avoid);
   let last = null, hitBrace = false, hitWall = false;
-  for (const du of [0, 2, -2, 4, -4]) {
+  const u = p ? point[0] * p.u.x + point[1] * p.u.y : 0;
+  for (const du of p ? [0, 2, -2, 4, -4] : []) {
     const uc = Math.max(p.u0, Math.min(p.u1, u + du));
     const r = buildSwayRib(p, uc, partTris, topo, rot, result.offset,
                           { ...opts, crossClear: armClear(braces, walls) });
@@ -794,6 +819,45 @@ export function swayAtFace(topo, result, rot, faceIndex, point, opts = {}, avoid
     if (r.ok && swayClashesWall(r, walls)) { hitWall = true; continue; }
     if (r.ok) return r;
     last ??= r;   // the clicked spot's own reason, not the last nudge's
+  }
+  // Manual intent is explicit: fit a fin to a small/sloping feature, or its nearest
+  // side edge when a roof/underside cannot carry horizontal grip tines directly.
+  if (hitBrace || hitWall) return { ok: false, reason: hitBrace
+    ? 'it would run into another brace (on the facing wall, or right beside it) — click a spot staggered from it'
+    : 'a support already stands there, and the two would fuse into one piece — click a spot clear of it' };
+  if (!opts.fitFeature) return last ?? { ok: false,
+    reason: 'that face is too small or curved to stand a brace against' };
+  const seed = fittedPatch(faceIndex);
+  const sites = seed.patch ? [{ p: seed.patch, point, moved: 0 }] : [];
+  const edges = seed.boundary.map((face) => {
+    const q = triClosest(partTris, face, ...point);
+    return { face, point: q, moved: Math.hypot(...q.map((v, i) => v - point[i])) };
+  }).sort((a, b) => a.moved - b.moved || a.face - b.face);
+  const used = new Set(seed.patch?.faces ?? []);
+  for (const edge of edges) {
+    if (seed.patch && Math.abs(seed.patch.n.z) <= Math.sin(Math.PI / 4) + 1e-6) break;
+    if (sites.length >= 8) break;
+    if (used.has(edge.face)) continue;
+    const next = fittedPatch(edge.face).patch;
+    if (!next) continue;
+    for (const f of next.faces) used.add(f);
+    sites.push({ p: next, point: edge.point, moved: edge.moved });
+  }
+  for (const site of sites) {
+    const across = site.point[0] * site.p.u.x + site.point[1] * site.p.u.y;
+    for (const du of [0, 2, -2]) {
+      const uc = Math.max(site.p.u0, Math.min(site.p.u1, across + du));
+      for (const baseOffset of [0, 2, 4, 8, 16, 32, 64, 128, 256]) {
+        const r = buildSwayRib(site.p, uc, partTris, topo, rot, result.offset,
+          { ...opts, manualFit: true, baseOffset, crossClear: armClear(braces, walls) });
+        if (r.ok && swayClashes(r, braces)) { hitBrace = true; break; }
+        if (r.ok && swayClashesWall(r, walls)) { hitWall = true; break; }
+        if (r.ok) return { ...r, edgeMove: site.moved };
+        last = r;
+        // Only an obstructed plate route benefits from widening the base.
+        if (!/sticks out|base spreads/.test(r.reason)) break;
+      }
+    }
   }
   if (hitBrace) {
     return { ok: false, reason: 'it would run into another brace (on the facing wall, or right beside it) '
@@ -803,5 +867,5 @@ export function swayAtFace(topo, result, rot, faceIndex, point, opts = {}, avoid
     return { ok: false, reason: 'a support already stands there, and the two would fuse into one piece '
       + '— click a spot clear of it' };
   }
-  return last;
+  return last ?? { ok: false, reason: 'no printable fin contact was found on this feature or its edges' };
 }

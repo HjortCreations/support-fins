@@ -226,6 +226,11 @@ function updateDrawReadout(built, ms) {
   // A brace you place by hand is built even where Auto would refuse to stand one,
   // so say what it is doing: below its first tine it holds nothing and nothing
   // holds it, which is worth knowing but is your call to make.
+  const fitted = ok.filter((w) => w.kind === 'sway' && w.info?.fitted);
+  if (fitted.length) {
+    const mm = Math.round(Math.max(...fitted.map((w) => w.info.baseOffset ?? 0)));
+    help.push(t('Fitted braces: base moved outward by up to {mm}mm. Check plate space and sliced layers; this placement has not been print-tested.', { mm }));
+  }
   const stilted = ok.filter((w) => w.kind === 'sway' && (w.info?.stilt ?? 0) > 20);
   if (stilted.length) {
     const tallest = Math.max(...stilted.map((w) => w.info.stilt));

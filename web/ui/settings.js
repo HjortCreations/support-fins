@@ -227,6 +227,7 @@ el('sway').addEventListener('change', () => {
 });
 el('tines').addEventListener('change', syncSway);
 el('full-brace-depth').addEventListener('change', () => refreshFins());
+el('sway-fit').addEventListener('change', () => { clearPreview(); syncDrawControls(); });
 for (const id of ['sway-from', 'sway-spacing', 'sway-depth', 'sway-cross-height']) {
   el(id).addEventListener('input', () => debouncedRefresh());
 }

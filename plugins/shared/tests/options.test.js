@@ -50,6 +50,7 @@ const SITE_EXCLUDED = {
   'show-layers': 'site display', 'highlight-small': 'site display', 'show-islands': 'site display', 'show-rings': 'site display',
   'nav-preset': 'site mouse navigation', 'opts-search': 'site settings search',
   'pad-h': 'Custom pad', 'pad-gap': 'Custom pad', 'pad-grip': 'Custom pad', 'pad-margin': 'Custom pad',
+  'sway-fit': 'manual browser placement only; Auto never fits a small feature',
   'iface': 'a third 3MF object for a second material; the plugins hand the host one body',
   'wall-lines': 'the plugins scale by nozzle diameter but retain 2-line walls (web/nozzle.js)',
   'curved-walls': 'site first, off by default: the plugins build without it until the print test (web/prop/curved.js)',

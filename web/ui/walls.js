@@ -213,7 +213,7 @@ export function sweepDrawn({ topology, res, rot, tris, walls, toWorld, auto: bui
       // its clicked point's height; the rest run up the whole face.
       toWorld(w.a, wa);
       const r = swayAtFace(topology, res, rot, w.face,
-                           [wa.x, wa.y, wa.z], { ...swayOpts(), full: !w.capped }, { braces, walls: auto.walls });
+                           [wa.x, wa.y, wa.z], { ...swayOpts(), fitFeature: w.fitFeature === true, full: !w.capped }, { braces, walls: auto.walls });
       w.ok = r.ok;
       w.info = r;
       if (r.ok) { braces.push(r); for (const t of r.tris) out.push(t); }
@@ -401,6 +401,7 @@ let braceQueued = null;
  */
 function braceAt(faceIndex, p) {
   const opts = swayOpts();
+  opts.fitFeature = drawActive() && opts.fitFeature;
   const stamp = [lastResult, lastBuilt, removedIds, drawnWalls, drawnWalls.length, finsVisible, autoLike(),
                  rotM3.elements.join(), JSON.stringify(opts)];
   if (!braceMemo.stamp || braceMemo.stamp.some((v, i) => v !== stamp[i])) braceMemo = { stamp, map: new Map() };
@@ -449,6 +450,7 @@ function updateBracePreview(hit, ev) {
     const mm = Math.round(b.r.height ?? 0);
     showBrace(b.r.ok ? b.r.tris : null, b.r.height ?? 0,
               !b.r.ok ? t(b.r.reason)
+              : b.r.fitted ? t('Fitted brace · {mm} mm · check plate space', { mm })
               : b.full ? t('Brace · full height {mm} mm', { mm })
               : t('Brace · {mm} mm · move up for full height', { mm }),
               !b.r.ok);
@@ -486,7 +488,8 @@ function placeSway(hit) {
   drawMsg = '';
   histPush();
   part.updateMatrixWorld();
-  drawnWalls.push({ kind: 'sway', face: hit.faceIndex, ...(full ? {} : { capped: true }),
+  drawnWalls.push({ kind: 'sway', face: hit.faceIndex, fitFeature: drawActive() && el('sway-fit').checked,
+                    ...(full ? {} : { capped: true }),
                     a: part.worldToLocal(new THREE.Vector3(point[0], point[1], point[2])) });
   rebuildDrawn();
   syncDrawControls();   // Auto's first brace by hand brings up Clear / Remove selected
@@ -497,6 +500,7 @@ function placeSway(hit) {
 /** Show Clear whenever hand-drawn walls are shown (they stay in Suggest after
  *  "+ Add" is switched off), but the click hint only while a click places one. */
 export function syncDrawControls() {
+  el('sway-fit-fld').hidden = !drawActive() || !el('sway').checked;
   el('draw-controls').hidden = !drawShown();
   el('draw-hint').hidden = !drawActive();
   el('draw-hint').innerHTML = t('Click two points across an overhang — straight onto the red faces — to lay a breakaway wall along that line. Hover an upright side to preview a sway brace: its top follows the cursor, and near the top of the side it runs full height. Click to stand it. Esc or right-click cancels.');
@@ -601,7 +605,8 @@ export function braceClick(e) {
 }
 
 /** With Sway braces on, a click on an UPRIGHT side (no wall half-drawn) stands a brace. */
-const swayHit = (hit) => !drawStart && el('sway').checked && faceIsUpright(topology, rotM3.elements, hit.faceIndex);
+const swayHit = (hit) => !drawStart && el('sway').checked &&
+  ((drawActive() && el('sway-fit').checked) || faceIsUpright(topology, rotM3.elements, hit.faceIndex));
 
 /** A click: select a placed support, stand a sway brace, or set / commit a wall end. */
 export function drawClick(e) {
