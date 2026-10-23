@@ -30,6 +30,9 @@ The remaining product differences are:
 Draw as the initial mode is our preference; selecting Draw in upstream already
 provides that workflow. Local branding/server setup and Windows test capability
 probes are not product features that have to block moving to upstream.
+The fresh-worker retry is still our counterproposal to the maintainer's earlier
+inline-fallback request; its use in this fork is not upstream approval of that
+failure policy. Any contribution needs that distinction made explicit.
 
 ## Start locally
 
