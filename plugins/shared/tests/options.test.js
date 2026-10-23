@@ -13,6 +13,7 @@ import { FIN } from '../../../web/fins/config.js';
 
 const SCHEMA = JSON.parse(Deno.readTextFileSync(new URL('../engine/options.json', import.meta.url)));
 const HTML = Deno.readTextFileSync(new URL('../../../web/index.html', import.meta.url));
+const SETTINGS_JS = Deno.readTextFileSync(new URL('../../../web/ui/settings.js', import.meta.url));
 const OPTS = SCHEMA.options;
 const byKey = Object.fromEntries(OPTS.map((o) => [o.key, o]));
 const close = (a, b) => Math.abs(a - b) < 1e-9;
@@ -35,6 +36,9 @@ function siteControl(id) {
 const fromSite = (o, v) => (o.percent ? Number(v) / 100 : Number(v));
 // Options the site shows that a plugin dialog deliberately leaves out (options.json $comment).
 const SITE_ONLY_CHOICES = { padStyle: ['custom'], mode: ['draw'] };
+// A site checkbox the site ticks itself from another control; a dialog stores what it
+// holds, so the schema offers Auto (the site's own rule) beside On and Off.
+const SITE_AUTO_CHECKBOX = { separateWalls: 'ticked by the site when Vertical (resin) tines is picked' };
 // Every site control that is NOT in options.json, and why. A new control on the site
 // fails the test below until it is added to the schema or listed here.
 const SITE_EXCLUDED = {
@@ -42,7 +46,6 @@ const SITE_EXCLUDED = {
   'sway-cross-height': 'browser sway cross-ribs only; plugin dialogs retain the default rib height ratio',
   'tall-ribs': 'the plugins build with the engine default (on, as the site starts); a dialog control can follow',
   'tall-ribs-height': 'browser tall-wall rib threshold; plugin dialogs retain the default 100 mm height',
-  'separate-walls': 'the plugins build Full coverage with joined walls (the engine default); a dialog control can follow',
   'file': 'loading a model is the host\'s job', 'file-add': 'adding a model to the plate is the host\'s job', 'volume': 'site build-volume preview',
   'vx': 'site build-volume preview', 'vy': 'site build-volume preview', 'vz': 'site build-volume preview',
   'plugins-computer': 'picks which plugin download to offer',
@@ -87,7 +90,13 @@ Deno.test('options.json is well formed', () => {
 Deno.test('every default, range and choice is the website\'s', () => {
   for (const o of OPTS) {
     const site = siteControl(o.site);
-    if (o.type === 'bool') {
+    if (o.key in SITE_AUTO_CHECKBOX) {
+      assert(site.type === 'checkbox' && !site.checked, `${o.key}: #${o.site} is not an unticked checkbox`);
+      assert(o.choices.map((c) => c.value).join() === 'auto,on,off' && o.default === 'auto', `${o.key}: not Auto / On / Off`);
+      // ...and the site still ticks it from the tine direction, which Auto copies
+      assert(/el\('separate-walls'\)\.checked = el\('tine-dir'\)\.value === 'vertical'/.test(SETTINGS_JS),
+        `${o.key}: web/ui/settings.js no longer ticks #${o.site} for Vertical tines; Auto copies that rule`);
+    } else if (o.type === 'bool') {
       assert(site.type === 'checkbox', `${o.key}: #${o.site} is not a checkbox`);
       assert(site.checked === o.default, `${o.key}: default ${o.default}, site ${site.checked}`);
     } else if (o.type === 'number') {
@@ -156,6 +165,22 @@ Deno.test('optionVisible hides exactly what the site hides (web/ui/settings.js)'
   // the coverage slider is Auto's; Long walls is Full coverage's (settings.js syncCoverageUI)
   assert(shown('coverage', {}) && !shown('coverage', { mode: 'full' }), 'coverage follows Auto');
   assert(!shown('longWalls', {}) && shown('longWalls', { mode: 'full' }), 'Long walls follows Full coverage');
+  for (const tineDir of ['horizontal', 'vertical']) for (const tines of [true, false]) {
+    const values = { tineDir, tines, separateWalls: 'on' };
+    assert(!shown('separateWalls', values) && shown('separateWalls', { ...values, mode: 'full' }),
+      'Separate walls follows Full coverage, not tines or direction');
+    assert(optionsFromDialog(values).separateWalls === 'on', 'hidden value lost when changing modes');
+  }
+});
+
+Deno.test('Separate walls defaults to Auto and takes only its choices', () => {
+  assert(byKey.separateWalls.default === 'auto' && ENGINE_DEFAULTS.separateWalls === 'auto', 'not Auto');
+  for (const v of ['auto', 'on', 'off']) assert(optionsFromDialog({ separateWalls: v }).separateWalls === v, v);
+  for (const separateWalls of [true, false, 'true', 1, 'yes', [], {}]) {
+    let error;
+    try { optionsFromDialog({ separateWalls }); } catch (e) { error = e; }
+    assert(error?.message.includes('separateWalls must be one of auto, on, off'), `accepted ${JSON.stringify(separateWalls)}`);
+  }
 });
 
 Deno.test('optionsFromDialog: nests, checks, drops sway when off', () => {
@@ -219,7 +244,7 @@ Deno.test('every option reaches the geometry (no dead dialog control)', () => {
   const bar = Float64Array.from(readSTL(Deno.readFileSync(`${MODELS}bar.stl`)));  // upright: braced
   try {
     const plain = computeFins(lbracket, {}).triangles;
-    const portal = posed('portal', 90), rowed = posed('lbracket', 40, rotX);
+    const portal = posed('portal', 90), rowed = posed('lbracket', 40, rotX), sphere = posed('sphere', 0);
     const braced = computeFins(bar, { sway: { on: true } }).triangles;
     for (const o of OPTS) {
       const [, sub] = o.key.split('.');
@@ -233,6 +258,9 @@ Deno.test('every option reaches the geometry (no dead dialog control)', () => {
           : o.key === 'longWalls'   // shown only in Full coverage
             ? changesFins(rowed, o, computeFins(rowed, { mode: 'full' }).triangles,
                 (v) => computeFins(rowed, { mode: 'full', longWalls: v }))
+          : o.key === 'separateWalls'   // the sphere has joined fill walls and bases
+            ? changesFins(sphere, o, computeFins(sphere, { mode: 'full' }).triangles,
+                (v) => computeFins(sphere, { mode: 'full', separateWalls: v }))
           : o.key === 'plateOnly'
             ? changesFins(portal, o, computeFins(portal, {}).triangles, (v) => computeFins(portal, { plateOnly: v }))
           : changesFins(lbracket, o, plain, (v) => computeFins(lbracket, { [o.key]: v }));

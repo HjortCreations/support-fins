@@ -100,6 +100,24 @@ function additionBlocked(extra, contains, topo, rot, offset, obstacles, gap) {
     : "";
 }
 
+// Upstream's leaning-back anchors may need their native cross ribs omitted.
+// Our full-height addition must obey the same 45-degree FDM overhang limit.
+function crossPrints(tris) {
+  for (let i = 0; i < tris.length; i += 3) {
+    const [a, b, c] = tris.slice(i, i + 3);
+    if (Math.max(a[2], b[2], c[2]) < 0.01) continue; // underside on the plate
+    const u = b.map((v, k) => v - a[k]), v = c.map((v, k) => v - a[k]);
+    const n = [
+      u[1] * v[2] - u[2] * v[1],
+      u[2] * v[0] - u[0] * v[2],
+      u[0] * v[1] - u[1] * v[0],
+    ];
+    const len = Math.hypot(...n);
+    if (len > 1e-9 && -n[2] > len * (Math.SQRT1_2 + 1e-6)) return false;
+  }
+  return true;
+}
+
 /** Perpendicular rib, broad at the plate and narrowing near the original wall's top. */
 function reinforceCross(
   tris,
@@ -235,6 +253,10 @@ function reinforceCross(
         ? roundedPolygon(footRect, wide + footMargin)
         : footRect;
       boxExtrude(foot, 0, footH, P, extra);
+      if (!crossPrints(extra)) {
+        reason = "cross would overhang beyond 45 degrees";
+        continue;
+      }
       const contains = ([px, py, z]) => {
         if (z < -1e-6 || z > h) return false;
         const x = px - a[0],

@@ -2,7 +2,7 @@
 
 This is the **Hjort Creations working version**, based on
 [upstream Support Fins](https://github.com/gittrahan/support-fins) at
-`c473b30ee3fbd820395e3c53de0c6ce89835d63f` (23 October 2026).
+`dec99b5eb9a81c288bafa45c2d5f6277ffa31f6b` (23 October 2026).
 It includes the current upstream application and our optional FDM reinforcement,
 rounded feet and explicit Sway Fit controls. This browser version starts in Draw;
 the plugins retain upstream's Auto default.

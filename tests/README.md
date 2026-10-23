@@ -20,6 +20,11 @@ upstream geometry; nozzle rules are the current upstream ones.
 models, one fresh-worker retry and no inline fallback. A real module worker must
 match direct-engine Fit/Cross/contact geometry and Auto removal ownership.
 
+**`hjort_anchor.test.js`** -- current upstream anchors on 30/40/44-degree backs
+remain the ordinary placement result even with Fit selected. Full-height Cross
+cannot add a downward face beyond the upstream 45-degree overhang limit, and a
+real worker preserves the anchor's grip and contact-material tags.
+
 **`sway_clearance.test.js`** -- square-ended Sway feet and bodies keep the 1 mm
 clearance without imaginary round caps rejecting opposite sides of a thin wall.
 Pins rotated 2/6 mm walls, cross ribs, duplicate refusal, actual overlap and gaps

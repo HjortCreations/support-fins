@@ -1,12 +1,35 @@
 # Hjort Creations working version
 
-Based on upstream `c473b30` on 23 October 2026. The full upstream application is
+Based on upstream `dec99b5` on 23 October 2026. The full upstream application is
 present, including its recent import/export, multi-model and multi-plate work,
 nozzle settings, material interface, geometry fixes and touch controls. See the
 [upstream history](https://github.com/gittrahan/support-fins/commits/main/) for
 individual changes. This fork's `main` and `codex/hjort-current` publish the same
 working version. Future upstream contributions should branch from upstream main
 and remain small, independently reviewable PRs.
+
+## Moving back toward the upstream application
+
+The goal is to use the maintained upstream application with the few additional
+capabilities we need. Our fork is the integration/test version for that work.
+The following changes are now upstream: rounded feet (#240), opposite-side Sway
+clearance (#378), actual Sway Cross gauge (#379) and Windows MCP test paths (#380).
+This update also includes the maintainer's rounded-foot illustration/translations
+(#381), Separate walls in plugins/CLI/MCP (#377) and hand-placed anchors on
+up-facing leaning backs (#352). Plugin Separate walls defaults to Auto: on for
+resin tines and off for FDM, with explicit On/Off overrides.
+
+The remaining product differences are:
+
+| Capability | What upstream already covers | Remaining work |
+| --- | --- | --- |
+| Full-height Cross and separate base controls | Correct Sway gauge and adjustable shorter cross ribs | Isolate the needed height/reach/base controls into small contributions; retain clearance and overhang limits, and obtain print evidence before strength claims. |
+| Explicit Fit for a small feature | Ordinary manual placement and the newly accepted leaning-back anchors | Preserve the ordinary result first; a bounded fallback still helps small-feature cases. Submit separately after its background execution dependency. |
+| Background manual rebuilds/previews and failure retry | Auto and orientation workers, plus parked-model Auto builds | Propose only the measured manual-worker path and failure behavior. Do not resubmit the declined adaptive CPU pool. |
+
+Draw as the initial mode is our preference; selecting Draw in upstream already
+provides that workflow. Local branding/server setup and Windows test capability
+probes are not product features that have to block moving to upstream.
 
 ## Start locally
 
@@ -73,6 +96,9 @@ readout reports limited additions; check them before printing. Full-height Cross
 therefore describes the geometry of accepted arms, not a guarantee that every
 support gets every requested arm. The part contact and breakaway tines are not
 made thicker by the base multiplier.
+In particular, an extra full-height Cross that would overhang past 45 degrees on
+a leaning anchor is omitted. Its original printable anchor remains, following
+the same overhang limit as upstream's native cross ribs.
 
 A single-model 3MF preserves editable placements/settings, as in upstream.
 Multi-model/plate exports preserve the printable geometry; upstream does not yet
@@ -85,7 +111,7 @@ this combined version. Geometric checks are not a physical stability guarantee.
 
 ## Validation on this version
 
-- Full Deno suite on Windows: **797 passed, 0 failed, 3 ignored**. One existing
+- Full Deno suite on Windows: **807 passed, 0 failed, 3 ignored**. One existing
   ignored test remains; two symlink-specific tests are skipped only when Windows
   does not grant symlink creation. All other project/cache security tests run.
 - Public Auto regression sweep: **621/621 meshes byte-identical** to the current
@@ -98,13 +124,16 @@ this combined version. Geometric checks are not a physical stability guarantee.
   3MF export, rapid settings changes, all-plate ZIP export, injected live/parked
   worker failures and recovery, plus suggestion ranking and its failure/retry.
   Both exported plate files reopened as geometry.
+  The synced version also passes an actual canvas click on a 40-degree leaning
+  back using the ordinary upstream path (Fit is not needed for that anchor).
   No page errors;
   injected failures log the expected diagnostic.
-- A synthetic 196,632-face wing was queried through the cached worker in
+- Before this sync, on revision `186db4b`, a synthetic 196,632-face wing was queried through the cached worker in
   Chromium on the development computer: 213 ms request-to-result, 44 UI timer
   ticks and a largest observed timer gap of 7 ms, with no overlapping long-task
   entry in that sample. These are one-machine observations, not hardware-wide
-  performance promises or an additional speedup over upstream's indexing.
+  performance promises or an additional speedup over upstream's indexing. They
+  are retained as an earlier observation, not a new timing of this synced revision.
 
 Run `deno test -A` for the invariant/CLI suite. The public sweep procedure is in
 `prototype/sweep/`; it must use public fixtures and an explicit upstream baseline.

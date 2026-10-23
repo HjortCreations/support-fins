@@ -72,6 +72,31 @@ function bounds(pos) {
   return { lo, hi };
 }
 
+Deno.test('cli: Separate walls is Auto / on / off, reaches Full coverage and warns in Auto', async () => {
+  const source = Deno.readFileSync(`${MODELS}sphere.stl`), files = { 'sphere.stl': source };
+  const args = ['sphere.stl', '--mode', 'full', '-o', 'out.stl'];
+  const plain = await cli(args, files), auto = await cli([...args, '--separate-walls', 'auto'], files);
+  const on = await cli([...args, '--separate-walls', 'on'], files);
+  const off = await cli([...args, '--separate-walls', 'off'], files);
+  const resin = await cli([...args, '--tine-dir', 'vertical'], files);
+  const resinOn = await cli([...args, '--tine-dir', 'vertical', '--separate-walls', 'on'], files);
+  for (const r of [plain, auto, on, off, resin, resinOn]) assert(r.code === 0, r.err.join('\n'));
+  const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  const stl = (r) => r.fs.get('out.stl');
+  assert(!same(stl(plain), stl(on)), 'on did not change Full coverage');
+  assert(same(stl(plain), stl(off)) && same(stl(plain), stl(auto)), 'Auto is not off for FDM tines');
+  assert(same(stl(resin), stl(resinOn)), 'Auto is not on for resin tines');
+  const inAuto = await cli(['sphere.stl', '--separate-walls', 'on', '-o', 'out.stl'], files);
+  const normal = await cli(['sphere.stl', '-o', 'out.stl'], files);
+  assert(inAuto.code === 0 && same(stl(inAuto), stl(normal)), 'Auto mode changed');
+  assert(inAuto.err.some((s) => s.includes('--separate-walls does nothing')), 'inactive setting not explained');
+  assert((await cli(['--help'])).out.join().includes('--separate-walls <auto|on|off>'), 'help omits flag');
+  for (const flags of [['--separate-walls', 'true'], ['--no-separate-walls']]) {
+    const r = await cli(['missing.stl', ...flags]);
+    assert(r.code === 2 && !r.fs.has('missing-fins.3mf'), `bad flag not refused: ${flags.join(' ')}`);
+  }
+});
+
 // v' = A (B v), column-major like three.js Matrix3.elements
 const mul = (A, B) => { const C = new Array(9).fill(0);
   for (let c = 0; c < 3; c++) for (let r = 0; r < 3; r++) for (let k = 0; k < 3; k++) C[c * 3 + r] += A[k * 3 + r] * B[c * 3 + k];

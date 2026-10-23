@@ -76,6 +76,19 @@ two-line walls on every call, resetting any previous nozzle/wall-line state.
 Layer height and support gap remain separate settings. This exposes the existing
 website scaling; it does not add material presets or nozzle-specific calibration.
 
+**Separate walls.** In Full coverage, `separateWalls` keeps fill walls from crossing
+other walls or sharing their bases, so a resin print doesn't cure them into one block.
+It is `'auto'` (the default), `'on'` or `'off'`. Auto follows the tine direction the
+way the site ticks its box: on for Vertical (resin) tines, off for Horizontal (FDM).
+A dialog stores whatever it holds, so the schema carries Auto rather than the site's
+self-ticking checkbox. Separation may leave more overhang unsupported, and thin ties
+between tall walls stay (they snap). Auto mode ignores it.
+FreeCAD, Blender, Cura, Rhino and SolidWorks expose the schema control; Orca accepts
+`{"mode":"full","separateWalls":"on"}` in its plugin config. The CLI flag is
+`--separate-walls <auto|on|off>`, and MCP uses `"separate-walls": "on"` in `settings`.
+Fusion's hand-written dialog sends neither tine direction nor this setting, so it
+builds FDM tines without separation; Prusa and Onshape don't use the shared engine.
+
 CI: [`.github/workflows/plugins.yml`](../../.github/workflows/plugins.yml) rebuilds and tests
 the plugins on every PR and push that touches `web/` or `plugins/`, and on main publishes
 the builds to the [`plugins-latest`](https://github.com/gittrahan/support-fins/releases/tag/plugins-latest)
