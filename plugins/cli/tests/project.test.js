@@ -1,3 +1,5 @@
+import {basename} from 'node:path';
+import {canSymlink} from './_symlink.js';
 import { deflateRawSync } from 'node:zlib';
 import { run } from '../cli.js';
 import { ProjectZip } from '../project-zip.js';
@@ -500,14 +502,13 @@ Deno.test('project XML: escaped names and self-closing nodes survive insertion',
     === '<root><item name="a &amp; b &quot;&gt;&quot;"><child/></item></root>', 'self-closing insertion');
 });
 
-Deno.test('project IO: aliases/symlinks/hard links cannot overwrite source; complete atomic output only', async () => {
+Deno.test('project IO: aliases/hard links cannot overwrite source; complete atomic output only', async () => {
   const dir = await Deno.makeTempDir();
   try {
     const source = `${dir}/source.3mf`, output = `${dir}/out.3mf`;
     await Deno.writeTextFile(source, 'original');
-    await Deno.symlink(source, `${dir}/symlink.3mf`);
     await Deno.link(source, `${dir}/hardlink.3mf`);
-    for (const target of [source, `${dir}/../${dir.split('/').pop()}/source.3mf`, `${dir}/symlink.3mf`, `${dir}/hardlink.3mf`]) {
+    for (const target of [source, `${dir}/../${basename(dir)}/source.3mf`, `${dir}/hardlink.3mf`]) {
       let threw = false;
       try { await writeProject(source, target, bytes('bad'), true); } catch { threw = true; }
       assert(threw, `accepted ${target}`);
@@ -849,3 +850,11 @@ Deno.test('project resume: a killed subprocess leaves durable checkpoints reusab
   assert(!err.includes('object 2: reusing'), 'interrupted object falsely completed');
   assert(JSON.parse(new TextDecoder().decode(result.stdout)).objects.length === 2, 'resumed CLI omitted an object');
 }));
+
+Deno.test({name:'project IO: symlink alias cannot overwrite source',ignore:!(await canSymlink()),fn:async()=>{
+ const dir=await Deno.makeTempDir();try{const source=dir+'/source.3mf',alias=dir+'/link.3mf';
+  await Deno.writeTextFile(source,'original');await Deno.symlink(source,alias);
+  let refused=false;try{await writeProject(source,alias,bytes('bad'),true);}catch{refused=true;}
+  assert(refused&&await Deno.readTextFile(source)==='original','symlink overwrote source');
+ }finally{await Deno.remove(dir,{recursive:true});}
+}});

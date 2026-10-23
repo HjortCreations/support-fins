@@ -1,3 +1,4 @@
+import {canSymlink} from './_symlink.js';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -87,7 +88,7 @@ Deno.test('cache: corrupt records warn and miss; incomplete writes and unrelated
   assert(await fs.readFile(path.join(folder, 'object-2-interrupted.cache.tmp'), 'utf8') === 'incomplete', 'unknown temporary write removed');
 }));
 
-Deno.test('cache: symlinked checkpoint is not read and cleanup cannot delete its target', () => temporary(async (dir) => {
+Deno.test({name:'cache: symlinked checkpoint is not read and cleanup cannot delete its target',ignore:!(await canSymlink()),fn:() => temporary(async (dir) => {
   const r = request(dir), root = `${r.input}.fins-cache`, warnings = [];
   const c = await open(r); await c.save(1, data);
   const [record] = await records(root), file = path.join(root, record), outside = path.join(dir, 'keep.bin');
@@ -97,7 +98,7 @@ Deno.test('cache: symlinked checkpoint is not read and cleanup cannot delete its
   await next.finish();
   assert((await fs.stat(outside)).size > 0, 'symlink target deleted');
   assert(warnings.some((s) => s.includes('not a regular file')), 'symlink not reported');
-}));
+})});
 
 Deno.test('cache: failed write is fatal and leaves earlier checkpoints intact', () => temporary(async (dir) => {
   const r = request(dir), root = `${r.input}.fins-cache`, c = await open(r);
